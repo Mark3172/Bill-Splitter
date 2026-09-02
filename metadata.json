@@ -1,0 +1,6 @@
+{
+  "name": "Bill Splitter",
+  "description": "Dark-mode bill splitting utility with payment method selector and formatted clipboard sharing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
