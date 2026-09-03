@@ -244,7 +244,7 @@ export default function App() {
         ? \`\${currentCurrencyConfig.symbol}\${formattedTotalNum}\`
         : \`\${formattedTotalNum} \${currentCurrencyConfig.symbol}\`;
 
-    // Build the formatted string dynamically:
+    // Build the formatted string dynamically (polite group sharing, NO 'Your Share'):
     // - Omit Event Name if empty
     // - Omit Send via line if Account Number is empty
     const lines = [];
@@ -252,8 +252,9 @@ export default function App() {
     if (eventName.trim().length > 0) {
       lines.push(\`🍽️ \${eventName.trim()}\`);
     }
-    lines.push(\`💰 Total: \${formattedTotal}\`);
-    lines.push(\`💸 Your Share: \${formattedShare}\`);
+    const peopleCountStr = peopleNum > 1 ? \` (\${peopleNum} people)\` : '';
+    lines.push(\`💰 Total: \${formattedTotal}\${peopleCountStr}\`);
+    lines.push(\`👥 Per Person: \${formattedShare}\`);
 
     if (activeAccount.trim().length > 0) {
       lines.push(\`📱 Send via \${selectedProvider}: \${activeAccount.trim()}\`);
@@ -481,8 +482,8 @@ export default function App() {
               </View>
 
               <View style={[styles.receiptRow, styles.receiptHighlightRow]}>
-                <Text style={styles.receiptIcon}>💸</Text>
-                <Text style={styles.receiptLabelHighlight}>Your Share:</Text>
+                <Text style={styles.receiptIcon}>👥</Text>
+                <Text style={styles.receiptLabelHighlight}>Per Person:</Text>
                 <Text
                   style={[
                     styles.receiptValueMonoHighlight,
@@ -527,7 +528,10 @@ export default function App() {
                     />
                   </View>
                   <Text style={styles.qrCaption}>
-                    QR Attached for {selectedProvider}
+                    Scan with Any Banking App
+                  </Text>
+                  <Text style={styles.qrSubCaption}>
+                    KBZPay • Wave • AYA • CB Bank & All Wallets
                   </Text>
                 </View>
               ) : (
@@ -538,7 +542,7 @@ export default function App() {
                 >
                   <Text style={styles.qrPlaceholderIcon}>📷</Text>
                   <Text style={styles.qrPlaceholderText}>
-                    No QR code attached for {selectedProvider}
+                    + Attach Any Bank or Wallet QR Code
                   </Text>
                   <Text
                     style={[
@@ -546,7 +550,7 @@ export default function App() {
                       { color: currentProviderConfig.color },
                     ]}
                   >
-                    + Tap to attach payment QR
+                    Tap to upload screenshot (KBZ, AYA, Wave, CB, etc.)
                   </Text>
                 </TouchableOpacity>
               )}
@@ -705,31 +709,67 @@ export default function App() {
               />
             </View>
 
-            {/* Upload / Manage QR Code Button */}
-            <View style={styles.qrButtonRow}>
-              <TouchableOpacity
-                style={[
-                  styles.uploadQrButton,
-                  { borderColor: currentProviderConfig.color + '55' },
-                ]}
-                onPress={handlePickQrImage}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.uploadQrIcon}>📷</Text>
-                <Text style={styles.uploadQrButtonText}>
-                  {activeQrUri
-                    ? \`Replace \${selectedProvider} QR Code\`
-                    : \`Upload \${selectedProvider} QR Code\`}
-                </Text>
-              </TouchableOpacity>
+            {/* Bank / Payment QR Code Section (Supports Any Bank or Wallet) */}
+            <View style={styles.qrSectionCard}>
+              <View style={styles.qrSectionHeader}>
+                <View style={styles.qrHeaderTitleRow}>
+                  <Text style={styles.qrHeaderIcon}>💳</Text>
+                  <Text style={styles.qrHeaderTitle}>Bank / Payment QR Code</Text>
+                </View>
+                <View style={styles.anyBankBadge}>
+                  <Text style={styles.anyBankBadgeText}>Any Bank Accepted</Text>
+                </View>
+              </View>
 
-              {activeQrUri && (
+              <Text style={styles.qrSectionSubtitle}>
+                Upload screenshot from any bank or mobile wallet app (KBZPay, WavePay, AYA, CB Bank, PromptPay, etc.).
+              </Text>
+
+              {activeQrUri ? (
+                <View style={styles.activeQrCard}>
+                  <View style={styles.activeQrLeft}>
+                    <Image
+                      source={{ uri: activeQrUri }}
+                      style={styles.activeQrThumb}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.activeQrInfo}>
+                      <Text style={styles.activeQrStatusText}>✓ Bank QR Attached</Text>
+                      <Text style={styles.activeQrSubText}>Ready for receipts & sharing</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.activeQrActions}>
+                    <TouchableOpacity
+                      style={styles.changeQrButton}
+                      onPress={handlePickQrImage}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.changeQrButtonText}>Change QR</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.removeQrButton}
+                      onPress={handleRemoveQrImage}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.removeQrButtonText}>Remove</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
                 <TouchableOpacity
-                  style={styles.removeQrButton}
-                  onPress={handleRemoveQrImage}
+                  style={[
+                    styles.uploadAnyBankButton,
+                    { borderColor: currentProviderConfig.color + '60' },
+                  ]}
+                  onPress={handlePickQrImage}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.removeQrButtonText}>Remove</Text>
+                  <Text style={styles.uploadAnyBankIcon}>📷</Text>
+                  <Text style={styles.uploadAnyBankTitle}>Upload Any Bank QR Code</Text>
+                  <Text style={styles.uploadAnyBankSub}>
+                    Tap to select screenshot from photo gallery
+                  </Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -774,7 +814,7 @@ export default function App() {
                   isCopied && styles.secondaryButtonTextSuccess,
                 ]}
               >
-                {isCopied ? '✓ Copied to Clipboard!' : '📋 Copy Text Only'}
+                {isCopied ? '✓ Clean Text Copied!' : '📋 Copy Text Only (Ready to Share)'}
               </Text>
             </TouchableOpacity>
 
@@ -1032,27 +1072,36 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   qrCaption: {
-    fontSize: 11,
-    color: '#94A3B8',
+    fontSize: 12,
+    color: '#E2E8F0',
     marginTop: 8,
-    fontWeight: '500',
+    fontWeight: '600',
+  },
+  qrSubCaption: {
+    fontSize: 10,
+    color: '#94A3B8',
+    marginTop: 2,
+    textAlign: 'center',
   },
   qrPlaceholder: {
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
   },
   qrPlaceholderIcon: {
     fontSize: 22,
     marginBottom: 4,
   },
   qrPlaceholderText: {
-    fontSize: 12,
-    color: '#64748B',
+    fontSize: 13,
+    color: '#E2E8F0',
+    fontWeight: '600',
   },
   qrPlaceholderAction: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '500',
     marginTop: 4,
+    textAlign: 'center',
   },
   // 3. INPUT CONTROLS
   formSection: {
@@ -1142,45 +1191,141 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
   },
-  // QR Upload Button Row
-  qrButtonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 2,
+  // QR Bank Card & Upload Section
+  qrSectionCard: {
+    backgroundColor: '#181818',
+    borderWidth: 1,
+    borderColor: '#282828',
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 4,
   },
-  uploadQrButton: {
-    flex: 1,
+  qrSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  qrHeaderTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  qrHeaderIcon: {
+    fontSize: 14,
+  },
+  qrHeaderTitle: {
+    color: '#F1F5F9',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  anyBankBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.25)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  anyBankBadgeText: {
+    color: '#34D399',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  qrSectionSubtitle: {
+    color: '#94A3B8',
+    fontSize: 11,
+    lineHeight: 16,
+    marginBottom: 10,
+  },
+  uploadAnyBankButton: {
     backgroundColor: '#1E1E1E',
     borderWidth: 1.2,
     borderStyle: 'dashed',
     borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  uploadQrIcon: {
-    fontSize: 16,
+  uploadAnyBankIcon: {
+    fontSize: 20,
+    marginBottom: 4,
   },
-  uploadQrButtonText: {
-    color: '#E2E8F0',
+  uploadAnyBankTitle: {
+    color: '#FFFFFF',
     fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  uploadAnyBankSub: {
+    color: '#64748B',
+    fontSize: 11,
+  },
+  activeQrCard: {
+    backgroundColor: '#202020',
+    borderWidth: 1,
+    borderColor: '#2E2E2E',
+    borderRadius: 12,
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  activeQrLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  activeQrThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#000000',
+  },
+  activeQrInfo: {
+    flex: 1,
+  },
+  activeQrStatusText: {
+    color: '#34D399',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  activeQrSubText: {
+    color: '#94A3B8',
+    fontSize: 10,
+    marginTop: 2,
+  },
+  activeQrActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  changeQrButton: {
+    backgroundColor: '#2A2A2A',
+    borderWidth: 1,
+    borderColor: '#383838',
+    borderRadius: 8,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+  },
+  changeQrButtonText: {
+    color: '#E2E8F0',
+    fontSize: 11,
     fontWeight: '600',
   },
   removeQrButton: {
     backgroundColor: '#2A1F1F',
     borderWidth: 1,
     borderColor: '#7F1D1D',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    borderRadius: 8,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
   },
   removeQrButtonText: {
     color: '#F87171',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   // 5. ACTION BUTTONS
