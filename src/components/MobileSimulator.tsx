@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { PaymentMethod, ProviderConfig } from '../types';
+import { PaymentMethod, ProviderConfig, CurrencyCode, CurrencyConfig, HistoryItem } from '../types';
 import {
   Copy,
   Check,
@@ -10,7 +10,58 @@ import {
   Trash2,
   UploadCloud,
   Sparkles,
+  Coins,
+  Clock,
+  ArrowUpRight,
+  BookmarkCheck,
 } from 'lucide-react';
+
+export const CURRENCY_CONFIGS: Record<CurrencyCode, CurrencyConfig> = {
+  'MMK': {
+    code: 'MMK',
+    symbol: 'Ks',
+    name: 'Myanmar Kyat',
+    placement: 'suffix',
+    sampleAmount: '145000',
+  },
+  'USD': {
+    code: 'USD',
+    symbol: '$',
+    name: 'US Dollar',
+    placement: 'prefix',
+    sampleAmount: '85.00',
+  },
+  'EUR': {
+    code: 'EUR',
+    symbol: '€',
+    name: 'Euro',
+    placement: 'prefix',
+    sampleAmount: '75.50',
+  },
+  'THB': {
+    code: 'THB',
+    symbol: '฿',
+    name: 'Thai Baht',
+    placement: 'prefix',
+    sampleAmount: '2400',
+  },
+  'SGD': {
+    code: 'SGD',
+    symbol: 'S$',
+    name: 'Singapore Dollar',
+    placement: 'prefix',
+    sampleAmount: '110.00',
+  },
+  'GBP': {
+    code: 'GBP',
+    symbol: '£',
+    name: 'British Pound',
+    placement: 'prefix',
+    sampleAmount: '65.00',
+  },
+};
+
+export const SUPPORTED_CURRENCIES: CurrencyCode[] = ['MMK', 'USD', 'EUR', 'THB', 'SGD', 'GBP'];
 
 const PROVIDER_CONFIGS: Record<PaymentMethod, ProviderConfig> = {
   'KPay': {
@@ -45,6 +96,7 @@ const PROVIDER_CONFIGS: Record<PaymentMethod, ProviderConfig> = {
 
 const PAYMENT_METHODS: PaymentMethod[] = ['KPay', 'AYA Pay', 'WavePay', 'Bank Transfer'];
 const STORAGE_KEY = 'bill_splitter_data_v2';
+const HISTORY_STORAGE_KEY = '@bill_splitter_history_v1';
 
 // Sample demo QR codes (SVG data URIs for instant preview out of the box)
 const SAMPLE_QR_KPAY = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="%232563EB"><rect width="100" height="100" fill="%230F172A"/><rect x="10" y="10" width="25" height="25" fill="%232563EB"/><rect x="15" y="15" width="15" height="15" fill="%230F172A"/><rect x="19" y="19" width="7" height="7" fill="%232563EB"/><rect x="65" y="10" width="25" height="25" fill="%232563EB"/><rect x="70" y="15" width="15" height="15" fill="%230F172A"/><rect x="74" y="19" width="7" height="7" fill="%232563EB"/><rect x="10" y="65" width="25" height="25" fill="%232563EB"/><rect x="15" y="70" width="15" height="15" fill="%230F172A"/><rect x="19" y="74" width="7" height="7" fill="%232563EB"/><circle cx="50" cy="50" r="10" fill="%2338BDF8"/><text x="50" y="54" font-family="sans-serif" font-size="9" font-weight="bold" fill="%23000" text-anchor="middle">KP</text></svg>';
@@ -56,6 +108,7 @@ export default function MobileSimulator() {
   const [totalBill, setTotalBill] = useState('145000');
   const [numberOfPeople, setNumberOfPeople] = useState('4');
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('KPay');
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>('MMK');
   
   // Persisted accounts
   const [accounts, setAccounts] = useState<Record<PaymentMethod, string>>({
@@ -75,7 +128,11 @@ export default function MobileSimulator() {
 
   const [isCopied, setIsCopied] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [isSavedFeedback, setIsSavedFeedback] = useState(false);
   const [notificationMsg, setNotificationMsg] = useState<string | null>(null);
+
+  // History state: last 5 successful bill calculations
+  const [history, setHistory] = useState<HistoryItem[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -87,6 +144,17 @@ export default function MobileSimulator() {
         const parsed = JSON.parse(saved);
         if (parsed.accounts) setAccounts((prev) => ({ ...prev, ...parsed.accounts }));
         if (parsed.qrCodes) setQrCodes((prev) => ({ ...prev, ...parsed.qrCodes }));
+        if (parsed.currency && CURRENCY_CONFIGS[parsed.currency as CurrencyCode]) {
+          setSelectedCurrency(parsed.currency as CurrencyCode);
+        }
+      }
+
+      const savedHistory = localStorage.getItem(HISTORY_STORAGE_KEY);
+      if (savedHistory) {
+        const parsedHistory = JSON.parse(savedHistory);
+        if (Array.isArray(parsedHistory)) {
+          setHistory(parsedHistory.slice(0, 5));
+        }
       }
     } catch (e) {
       console.warn('LocalStorage load error', e);
@@ -94,15 +162,27 @@ export default function MobileSimulator() {
   }, []);
 
   // Save to localStorage helper
-  const persist = (updatedAccounts: Record<PaymentMethod, string>, updatedQrCodes: Record<PaymentMethod, string | null>) => {
+  const persist = (
+    updatedAccounts: Record<PaymentMethod, string>,
+    updatedQrCodes: Record<PaymentMethod, string | null>,
+    updatedCurrency: CurrencyCode = selectedCurrency
+  ) => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         accounts: updatedAccounts,
         qrCodes: updatedQrCodes,
+        currency: updatedCurrency,
       }));
     } catch (e) {
       console.warn('LocalStorage save error', e);
     }
+  };
+
+  const handleCurrencyChange = (currCode: CurrencyCode) => {
+    triggerHaptics();
+    setSelectedCurrency(currCode);
+    persist(accounts, qrCodes, currCode);
+    showToast(`Currency set to ${currCode} (${CURRENCY_CONFIGS[currCode].symbol})`);
   };
 
   // Update and save account number
@@ -113,11 +193,11 @@ export default function MobileSimulator() {
           ...prev,
           [selectedMethod]: text,
         };
-        persist(updated, qrCodes);
+        persist(updated, qrCodes, selectedCurrency);
         return updated;
       });
     },
-    [selectedMethod, qrCodes]
+    [selectedMethod, qrCodes, selectedCurrency]
   );
 
   // QR Code Upload Handler
@@ -133,7 +213,7 @@ export default function MobileSimulator() {
           ...prev,
           [selectedMethod]: base64Uri,
         };
-        persist(accounts, updated);
+        persist(accounts, updated, selectedCurrency);
         return updated;
       });
       triggerHaptics();
@@ -148,7 +228,7 @@ export default function MobileSimulator() {
         ...prev,
         [selectedMethod]: null,
       };
-      persist(accounts, updated);
+      persist(accounts, updated, selectedCurrency);
       return updated;
     });
     triggerHaptics();
@@ -166,10 +246,11 @@ export default function MobileSimulator() {
     setTimeout(() => setNotificationMsg(null), 2500);
   };
 
-  // Quick preset helper
-  const handleQuickPreset = (name: string, amount: string, people: string) => {
+  // Quick preset helper with currency awareness
+  const handleQuickPreset = (name: string, defaultAmounts: Record<CurrencyCode, string>, people: string) => {
+    triggerHaptics();
     setEventName(name);
-    setTotalBill(amount);
+    setTotalBill(defaultAmounts[selectedCurrency] || defaultAmounts['MMK']);
     setNumberOfPeople(people);
   };
 
@@ -182,6 +263,7 @@ export default function MobileSimulator() {
   };
 
   const currentConfig = PROVIDER_CONFIGS[selectedMethod] || PROVIDER_CONFIGS['KPay'];
+  const currentCurrencyConfig = CURRENCY_CONFIGS[selectedCurrency] || CURRENCY_CONFIGS['MMK'];
   const activeQR = qrCodes[selectedMethod];
   const activeAccount = accounts[selectedMethod]?.trim() || '';
 
@@ -198,15 +280,32 @@ export default function MobileSimulator() {
     const isValid = hasValidBill && hasValidPeople;
 
     const share = isValid ? billNum / peopleNum : 0;
-    const formattedShare = isValid
-      ? share % 1 === 0
+    const isDecimalCurrency = ['USD', 'EUR', 'GBP', 'SGD'].includes(selectedCurrency);
+
+    const formattedShareNum = isValid
+      ? isDecimalCurrency
+        ? formatNumber(parseFloat(share.toFixed(2)))
+        : share % 1 === 0
         ? formatNumber(share)
         : formatNumber(parseFloat(share.toFixed(2)))
       : '0';
 
-    const formattedTotal = hasValidBill
-      ? formatNumber(billNum)
+    const formattedTotalNum = hasValidBill
+      ? isDecimalCurrency && billNum % 1 !== 0
+        ? formatNumber(parseFloat(billNum.toFixed(2)))
+        : formatNumber(billNum)
       : (totalBill.trim() || '0');
+
+    // Format with currency symbol according to placement
+    const formattedShare =
+      currentCurrencyConfig.placement === 'prefix'
+        ? `${currentCurrencyConfig.symbol}${formattedShareNum}`
+        : `${formattedShareNum} ${currentCurrencyConfig.symbol}`;
+
+    const formattedTotal =
+      currentCurrencyConfig.placement === 'prefix'
+        ? `${currentCurrencyConfig.symbol}${formattedTotalNum}`
+        : `${formattedTotalNum} ${currentCurrencyConfig.symbol}`;
 
     // Conditional text formatted strictly:
     // - Omit Event Name if empty
@@ -233,7 +332,97 @@ export default function MobileSimulator() {
       billNum: isNaN(billNum) ? 0 : billNum,
       peopleNum: isNaN(peopleNum) ? 0 : peopleNum,
     };
-  }, [eventName, totalBill, numberOfPeople, selectedMethod, activeAccount]);
+  }, [eventName, totalBill, numberOfPeople, selectedMethod, activeAccount, selectedCurrency, currentCurrencyConfig]);
+
+  // Save successful calculation to History (stores last 5 calculations in localStorage)
+  const saveCalculationToHistory = useCallback(
+    (customCalculation?: typeof calculation) => {
+      const calc = customCalculation || calculation;
+      if (!calc || !calc.isValid) return;
+
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const newItem: HistoryItem = {
+        id: Date.now().toString(),
+        timestamp: Date.now(),
+        dateStr: timeStr,
+        eventName: eventName.trim() || 'Bill Split',
+        totalBill: totalBill.trim(),
+        numberOfPeople: numberOfPeople.trim() || '2',
+        currency: selectedCurrency,
+        provider: selectedMethod,
+        formattedTotal: calc.formattedTotal,
+        formattedShare: calc.formattedShare,
+      };
+
+      setHistory((prev) => {
+        const isDuplicateOfLatest =
+          prev[0] &&
+          prev[0].totalBill === newItem.totalBill &&
+          prev[0].numberOfPeople === newItem.numberOfPeople &&
+          prev[0].currency === newItem.currency &&
+          prev[0].eventName === newItem.eventName;
+
+        const filtered = isDuplicateOfLatest
+          ? [newItem, ...prev.slice(1)]
+          : [newItem, ...prev.filter((item) => item.id !== newItem.id)];
+
+        const updated = filtered.slice(0, 5);
+        try {
+          localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updated));
+        } catch (e) {
+          console.warn('LocalStorage save history error', e);
+        }
+        return updated;
+      });
+
+      setIsSavedFeedback(true);
+      setTimeout(() => setIsSavedFeedback(false), 2000);
+    },
+    [calculation, eventName, totalBill, numberOfPeople, selectedCurrency, selectedMethod]
+  );
+
+  // Auto-save successful calculation to history with debounce
+  useEffect(() => {
+    if (!calculation.isValid) return;
+    const timer = setTimeout(() => {
+      saveCalculationToHistory(calculation);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [
+    calculation.isValid,
+    calculation.formattedTotal,
+    calculation.formattedShare,
+    eventName,
+    totalBill,
+    numberOfPeople,
+    selectedCurrency,
+    selectedMethod,
+    saveCalculationToHistory,
+  ]);
+
+  // Retrieve previous calculation from history
+  const handleRetrieveHistory = (item: HistoryItem) => {
+    triggerHaptics();
+    setEventName(item.eventName === 'Bill Split' ? '' : item.eventName);
+    setTotalBill(item.totalBill);
+    setNumberOfPeople(item.numberOfPeople);
+    setSelectedCurrency(item.currency);
+    setSelectedMethod(item.provider);
+    showToast(`Restored split: ${item.formattedShare} per person`);
+  };
+
+  // Clear history
+  const handleClearHistory = () => {
+    triggerHaptics();
+    setHistory([]);
+    try {
+      localStorage.removeItem(HISTORY_STORAGE_KEY);
+    } catch (e) {
+      console.warn('Clear history error', e);
+    }
+    showToast('Calculation history cleared');
+  };
 
   // Primary: Share Bill & QR
   const handleShare = async () => {
@@ -241,6 +430,7 @@ export default function MobileSimulator() {
 
     triggerHaptics();
     setIsSharing(true);
+    saveCalculationToHistory(calculation);
 
     try {
       if (navigator.share) {
@@ -266,6 +456,7 @@ export default function MobileSimulator() {
     if (!calculation.isValid) return;
 
     triggerHaptics();
+    saveCalculationToHistory(calculation);
     try {
       await navigator.clipboard.writeText(calculation.formattedMessage);
       setIsCopied(true);
@@ -317,7 +508,7 @@ export default function MobileSimulator() {
           id="btn-reset-demo"
           onClick={() => {
             setEventName('Hotpot Dinner');
-            setTotalBill('145000');
+            setTotalBill(currentCurrencyConfig.sampleAmount);
             setNumberOfPeople('4');
           }}
           title="Reset to sample data"
@@ -331,19 +522,37 @@ export default function MobileSimulator() {
       <div className="px-6 py-1 flex items-center gap-1.5 overflow-x-auto text-xs no-scrollbar">
         <span className="text-[10px] uppercase font-bold tracking-wider text-white/30 whitespace-nowrap">Presets:</span>
         <button
-          onClick={() => handleQuickPreset('Hotpot Dinner', '145000', '4')}
+          onClick={() =>
+            handleQuickPreset(
+              'Hotpot Dinner',
+              { MMK: '145000', USD: '140.00', EUR: '130.00', THB: '4800', SGD: '180.00', GBP: '110.00' },
+              '4'
+            )
+          }
           className="px-2.5 py-1 bg-[#1E1E1E] hover:bg-[#2A2A2A] text-slate-300 text-[11px] rounded-lg border border-white/5 transition whitespace-nowrap"
         >
           🍲 Hotpot (4p)
         </button>
         <button
-          onClick={() => handleQuickPreset('Friday Grab Ride', '18500', '3')}
+          onClick={() =>
+            handleQuickPreset(
+              'Friday Ride',
+              { MMK: '18500', USD: '24.00', EUR: '21.00', THB: '450', SGD: '30.00', GBP: '18.00' },
+              '3'
+            )
+          }
           className="px-2.5 py-1 bg-[#1E1E1E] hover:bg-[#2A2A2A] text-slate-300 text-[11px] rounded-lg border border-white/5 transition whitespace-nowrap"
         >
-          🚕 Grab (3p)
+          🚕 Ride (3p)
         </button>
         <button
-          onClick={() => handleQuickPreset('Coffee & Boba', '14000', '2')}
+          onClick={() =>
+            handleQuickPreset(
+              'Coffee & Boba',
+              { MMK: '14000', USD: '14.00', EUR: '12.50', THB: '280', SGD: '18.00', GBP: '11.00' },
+              '2'
+            )
+          }
           className="px-2.5 py-1 bg-[#1E1E1E] hover:bg-[#2A2A2A] text-slate-300 text-[11px] rounded-lg border border-white/5 transition whitespace-nowrap"
         >
           ☕ Coffee (2p)
@@ -363,12 +572,17 @@ export default function MobileSimulator() {
                 style={{ backgroundColor: currentConfig.color }}
               />
               <span className="text-[10px] font-bold tracking-wider text-slate-200 uppercase">
-                {selectedMethod} RECEIPT
+                {selectedMethod} RECEIPT • {selectedCurrency}
               </span>
             </div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              LIVE PREVIEW
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded">
+                {currentCurrencyConfig.symbol}
+              </span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                LIVE PREVIEW
+              </span>
+            </div>
           </div>
 
           {/* Receipt Body: Formatted Text with Monospace Math */}
@@ -461,6 +675,42 @@ export default function MobileSimulator() {
 
         {/* 3. INPUT CONTROLS */}
         <div className="space-y-3.5">
+          {/* Currency Selector */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                <Coins className="w-3.5 h-3.5 text-amber-400" />
+                Currency
+              </label>
+              <span className="text-[10px] text-slate-400 font-mono">
+                <strong className="text-blue-400">{currentCurrencyConfig.code}</strong> ({currentCurrencyConfig.symbol})
+              </span>
+            </div>
+            <div className="grid grid-cols-6 gap-1 p-1 bg-[#181818] border border-[#2A2A2A] rounded-2xl">
+              {SUPPORTED_CURRENCIES.map((code) => {
+                const isSelected = selectedCurrency === code;
+                const config = CURRENCY_CONFIGS[code];
+                return (
+                  <button
+                    key={code}
+                    id={`btn-currency-${code.toLowerCase()}`}
+                    type="button"
+                    onClick={() => handleCurrencyChange(code)}
+                    className={`py-1.5 px-1 rounded-xl text-xs font-semibold flex flex-col items-center justify-center transition-all ${
+                      isSelected
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    }`}
+                    title={`${config.name} (${config.symbol})`}
+                  >
+                    <span className="text-xs font-bold leading-tight">{config.symbol}</span>
+                    <span className="text-[9px] opacity-75 font-mono">{code}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Event / Location Name (Optional) */}
           <div>
             <div className="flex items-center justify-between mb-1">
@@ -482,18 +732,37 @@ export default function MobileSimulator() {
           {/* Numeric Row: Amount & Split */}
           <div className="grid grid-cols-12 gap-3">
             <div className="col-span-7">
-              <label className="text-xs font-semibold text-slate-300 mb-1 block">
-                Total Bill Amount
-              </label>
-              <input
-                id="input-total-bill"
-                type="text"
-                inputMode="decimal"
-                placeholder="0"
-                value={totalBill}
-                onChange={(e) => setTotalBill(e.target.value)}
-                className="w-full bg-[#1E1E1E] border border-[#2E2E2E] focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-sm font-mono font-semibold text-white placeholder:text-slate-500 outline-none transition"
-              />
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-semibold text-slate-300 block">
+                  Total Bill Amount
+                </label>
+                <span className="text-[10px] text-slate-400 font-mono font-semibold">
+                  {currentCurrencyConfig.symbol}
+                </span>
+              </div>
+              <div className="relative flex items-center">
+                {currentCurrencyConfig.placement === 'prefix' && (
+                  <span className="absolute left-3.5 font-mono font-bold text-blue-400 text-sm pointer-events-none select-none">
+                    {currentCurrencyConfig.symbol}
+                  </span>
+                )}
+                <input
+                  id="input-total-bill"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder={currentCurrencyConfig.sampleAmount}
+                  value={totalBill}
+                  onChange={(e) => setTotalBill(e.target.value)}
+                  className={`w-full bg-[#1E1E1E] border border-[#2E2E2E] focus:border-blue-500 rounded-xl py-2.5 text-sm font-mono font-semibold text-white placeholder:text-slate-500 outline-none transition ${
+                    currentCurrencyConfig.placement === 'prefix' ? 'pl-8 pr-3.5' : 'pl-3.5 pr-12'
+                  }`}
+                />
+                {currentCurrencyConfig.placement === 'suffix' && (
+                  <span className="absolute right-3 font-mono font-bold text-blue-400 text-xs pointer-events-none select-none bg-[#262626] px-1.5 py-0.5 rounded border border-white/10">
+                    {currentCurrencyConfig.symbol}
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="col-span-5">
@@ -685,10 +954,114 @@ export default function MobileSimulator() {
             )}
           </button>
 
+          {/* Manual Save to History Button / Feedback */}
+          <button
+            id="btn-save-to-history"
+            type="button"
+            disabled={!calculation.isValid}
+            onClick={() => saveCalculationToHistory(calculation)}
+            className={`w-full font-semibold py-2.5 rounded-2xl flex items-center justify-center gap-2 border transition-all text-xs ${
+              isSavedFeedback
+                ? 'bg-blue-950/50 border-blue-500 text-blue-300'
+                : calculation.isValid
+                ? 'bg-[#181818] border-[#2A2A2A] hover:bg-[#222222] text-slate-300 active:scale-[0.98]'
+                : 'bg-[#141414] border-[#202020] text-slate-600 cursor-not-allowed'
+            }`}
+          >
+            {isSavedFeedback ? (
+              <>
+                <BookmarkCheck className="w-3.5 h-3.5 text-blue-400" />
+                <span>✓ Saved to History!</span>
+              </>
+            ) : (
+              <>
+                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                <span>Save to History</span>
+              </>
+            )}
+          </button>
+
           {notificationMsg && (
             <p className="text-center text-xs text-emerald-400 font-medium animate-fade-in pt-1">
               ✓ {notificationMsg}
             </p>
+          )}
+        </div>
+
+        {/* 6. HISTORY SECTION (Last 5 Calculations in Storage) */}
+        <div className="mt-5 bg-[#181818] border border-[#262626] rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-slate-400" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200">
+                Recent Splits
+              </h3>
+              <span className="px-1.5 py-0.5 rounded-full bg-[#262626] text-[10px] font-mono text-slate-400">
+                {history.length}/5
+              </span>
+            </div>
+            {history.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearHistory}
+                className="text-[11px] font-medium text-red-400 hover:text-red-300 transition flex items-center gap-1"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          {history.length === 0 ? (
+            <div className="py-4 text-center">
+              <p className="text-xs text-slate-500 leading-relaxed">
+                No recent splits yet. Your last 5 calculations will automatically appear here for quick retrieval.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {history.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => handleRetrieveHistory(item)}
+                  className="group p-2.5 bg-[#202020] hover:bg-[#252525] border border-[#2D2D2D] hover:border-slate-600 rounded-xl transition-all cursor-pointer select-none"
+                  title="Click to retrieve calculation"
+                >
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-xs font-semibold text-slate-200 truncate">
+                        {item.eventName}
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-mono flex-shrink-0">
+                        • {item.dateStr}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-medium text-blue-400 group-hover:text-blue-300 flex items-center gap-0.5 flex-shrink-0 bg-blue-950/40 border border-blue-900/50 px-1.5 py-0.5 rounded-md">
+                      <span>Load</span>
+                      <ArrowUpRight className="w-2.5 h-2.5" />
+                    </span>
+                  </div>
+
+                  <div className="flex items-end justify-between pt-1.5 border-t border-white/5">
+                    <div>
+                      <span className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold block">
+                        Per Person
+                      </span>
+                      <span className="text-sm font-bold font-mono text-emerald-400">
+                        {item.formattedShare}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[11px] font-mono text-slate-300 block">
+                        Total: {item.formattedTotal}
+                      </span>
+                      <span className="text-[10px] text-slate-500">
+                        {item.numberOfPeople} people • {item.provider}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>

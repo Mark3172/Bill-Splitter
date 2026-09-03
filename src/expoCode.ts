@@ -30,7 +30,17 @@ const PAYMENT_PROVIDERS = [
   { id: 'Bank Transfer', label: 'Bank Transfer', color: '#10B981' },
 ];
 
+const CURRENCIES = [
+  { id: 'MMK', symbol: 'Ks', label: 'MMK (Ks)', placement: 'suffix', sample: '145000' },
+  { id: 'USD', symbol: '$', label: 'USD ($)', placement: 'prefix', sample: '85.00' },
+  { id: 'EUR', symbol: '€', label: 'EUR (€)', placement: 'prefix', sample: '75.50' },
+  { id: 'THB', symbol: '฿', label: 'THB (฿)', placement: 'prefix', sample: '2400' },
+  { id: 'SGD', symbol: 'S$', label: 'SGD (S$)', placement: 'prefix', sample: '110.00' },
+  { id: 'GBP', symbol: '£', label: 'GBP (£)', placement: 'prefix', sample: '65.00' },
+];
+
 const STORAGE_KEY = '@bill_splitter_data_v2';
+const HISTORY_STORAGE_KEY = '@bill_splitter_history_v1';
 
 export default function App() {
   // Input states
@@ -38,6 +48,7 @@ export default function App() {
   const [totalBill, setTotalBill] = useState('');
   const [numberOfPeople, setNumberOfPeople] = useState('2');
   const [selectedProvider, setSelectedProvider] = useState('KPay');
+  const [selectedCurrency, setSelectedCurrency] = useState('MMK');
 
   // Stored accounts and QR URIs per provider
   const [accounts, setAccounts] = useState({
@@ -57,6 +68,10 @@ export default function App() {
   // Action feedback states
   const [isCopied, setIsCopied] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [isSavedFeedback, setIsSavedFeedback] = useState(false);
+
+  // History state (last 5 successful calculations)
+  const [history, setHistory] = useState([]);
 
   // Load saved accounts & QR image URIs from AsyncStorage on mount
   useEffect(() => {
@@ -67,6 +82,15 @@ export default function App() {
           const parsed = JSON.parse(stored);
           if (parsed.accounts) setAccounts((prev) => ({ ...prev, ...parsed.accounts }));
           if (parsed.qrCodes) setQrCodes((prev) => ({ ...prev, ...parsed.qrCodes }));
+          if (parsed.currency) setSelectedCurrency(parsed.currency);
+        }
+
+        const storedHistory = await AsyncStorage.getItem(HISTORY_STORAGE_KEY);
+        if (storedHistory) {
+          const parsedHistory = JSON.parse(storedHistory);
+          if (Array.isArray(parsedHistory)) {
+            setHistory(parsedHistory.slice(0, 5));
+          }
         }
       } catch (error) {
         console.error('Error reading data from AsyncStorage:', error);
@@ -76,13 +100,14 @@ export default function App() {
   }, []);
 
   // Persist updated state to AsyncStorage
-  const persistData = async (newAccounts, newQrCodes) => {
+  const persistData = async (newAccounts, newQrCodes, newCurrency = selectedCurrency) => {
     try {
       await AsyncStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
           accounts: newAccounts,
           qrCodes: newQrCodes,
+          currency: newCurrency,
         })
       );
     } catch (error) {
@@ -98,9 +123,9 @@ export default function App() {
         [selectedProvider]: text,
       };
       setAccounts(updatedAccounts);
-      persistData(updatedAccounts, qrCodes);
+      persistData(updatedAccounts, qrCodes, selectedCurrency);
     },
-    [accounts, qrCodes, selectedProvider]
+    [accounts, qrCodes, selectedProvider, selectedCurrency]
   );
 
   // QR Code Image Picker Handler
@@ -169,6 +194,14 @@ export default function App() {
     );
   }, [selectedProvider]);
 
+  // Active currency configuration
+  const currentCurrencyConfig = useMemo(() => {
+    return (
+      CURRENCIES.find((c) => c.id === selectedCurrency) ||
+      CURRENCIES[0]
+    );
+  }, [selectedCurrency]);
+
   const activeAccount = accounts[selectedProvider] || '';
   const activeQrUri = qrCodes[selectedProvider] || null;
 
@@ -185,15 +218,31 @@ export default function App() {
     const isValid = hasValidBill && hasValidPeople;
 
     const share = isValid ? billNum / peopleNum : 0;
-    const formattedShare = isValid
-      ? share % 1 === 0
+    const isDecimalCurrency = ['USD', 'EUR', 'GBP', 'SGD'].includes(selectedCurrency);
+
+    const formattedShareNum = isValid
+      ? isDecimalCurrency
+        ? formatNumber(parseFloat(share.toFixed(2)))
+        : share % 1 === 0
         ? formatNumber(share)
         : formatNumber(parseFloat(share.toFixed(2)))
       : '0';
 
-    const formattedTotal = hasValidBill
-      ? formatNumber(billNum)
+    const formattedTotalNum = hasValidBill
+      ? isDecimalCurrency && billNum % 1 !== 0
+        ? formatNumber(parseFloat(billNum.toFixed(2)))
+        : formatNumber(billNum)
       : (totalBill.trim() || '0');
+
+    const formattedShare =
+      currentCurrencyConfig.placement === 'prefix'
+        ? \`\${currentCurrencyConfig.symbol}\${formattedShareNum}\`
+        : \`\${formattedShareNum} \${currentCurrencyConfig.symbol}\`;
+
+    const formattedTotal =
+      currentCurrencyConfig.placement === 'prefix'
+        ? \`\${currentCurrencyConfig.symbol}\${formattedTotalNum}\`
+        : \`\${formattedTotalNum} \${currentCurrencyConfig.symbol}\`;
 
     // Build the formatted string dynamically:
     // - Omit Event Name if empty
@@ -220,7 +269,7 @@ export default function App() {
       formattedShare,
       formattedMessage,
     };
-  }, [eventName, totalBill, numberOfPeople, selectedProvider, activeAccount]);
+  }, [eventName, totalBill, numberOfPeople, selectedProvider, activeAccount, selectedCurrency, currentCurrencyConfig]);
 
   // Primary Action: Share Bill & QR Code
   const handleShareBillAndQR = async () => {
@@ -229,6 +278,7 @@ export default function App() {
     try {
       setIsSharing(true);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      saveCalculationToHistory(calculation);
 
       // If a QR image is available and sharing is supported on this device
       const isSharingAvailable = await Sharing.isAvailableAsync();
@@ -264,12 +314,112 @@ export default function App() {
     try {
       await Clipboard.setStringAsync(calculation.formattedMessage);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      saveCalculationToHistory(calculation);
       setIsCopied(true);
       setTimeout(() => {
         setIsCopied(false);
       }, 2000);
     } catch (error) {
       console.error('Error copying text to clipboard:', error);
+    }
+  };
+
+  // Save successful calculation to History (stores last 5 calculations in AsyncStorage)
+  const saveCalculationToHistory = useCallback(
+    async (customCalculation = null) => {
+      const calc = customCalculation || calculation;
+      if (!calc || !calc.isValid) return;
+
+      try {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const newItem = {
+          id: Date.now().toString(),
+          timestamp: Date.now(),
+          dateStr: timeStr,
+          eventName: eventName.trim() || 'Bill Split',
+          totalBill: totalBill.trim(),
+          numberOfPeople: numberOfPeople.trim() || '2',
+          currency: selectedCurrency,
+          provider: selectedProvider,
+          formattedTotal: calc.formattedTotal,
+          formattedShare: calc.formattedShare,
+        };
+
+        setHistory((prev) => {
+          // Check if top entry has identical calculation inputs
+          const isDuplicateOfLatest =
+            prev[0] &&
+            prev[0].totalBill === newItem.totalBill &&
+            prev[0].numberOfPeople === newItem.numberOfPeople &&
+            prev[0].currency === newItem.currency &&
+            prev[0].eventName === newItem.eventName;
+
+          const filtered = isDuplicateOfLatest
+            ? [newItem, ...prev.slice(1)]
+            : [newItem, ...prev.filter((item) => item.id !== newItem.id)];
+
+          const updatedHistory = filtered.slice(0, 5);
+          AsyncStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updatedHistory)).catch(
+            (err) => console.error('Error saving history to AsyncStorage:', err)
+          );
+          return updatedHistory;
+        });
+
+        setIsSavedFeedback(true);
+        setTimeout(() => setIsSavedFeedback(false), 2000);
+      } catch (error) {
+        console.error('Error saving to history:', error);
+      }
+    },
+    [calculation, eventName, totalBill, numberOfPeople, selectedCurrency, selectedProvider]
+  );
+
+  // Auto-save successful calculation to history with debounce
+  useEffect(() => {
+    if (!calculation.isValid) return;
+    const timer = setTimeout(() => {
+      saveCalculationToHistory(calculation);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [
+    calculation.isValid,
+    calculation.formattedTotal,
+    calculation.formattedShare,
+    eventName,
+    totalBill,
+    numberOfPeople,
+    selectedCurrency,
+    selectedProvider,
+    saveCalculationToHistory,
+  ]);
+
+  // Retrieve & restore previous split calculation from history
+  const handleRetrieveHistory = async (item) => {
+    try {
+      await Haptics.selectionAsync();
+      setEventName(item.eventName === 'Bill Split' ? '' : item.eventName);
+      setTotalBill(item.totalBill);
+      setNumberOfPeople(item.numberOfPeople);
+      if (item.currency) setSelectedCurrency(item.currency);
+      if (item.provider) setSelectedProvider(item.provider);
+      Alert.alert(
+        'Split Retrieved',
+        \`Restored \${item.eventName}: \${item.formattedShare} per person.\`
+      );
+    } catch (error) {
+      console.error('Error retrieving history item:', error);
+    }
+  };
+
+  // Clear history
+  const handleClearHistory = async () => {
+    try {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      setHistory([]);
+      await AsyncStorage.removeItem(HISTORY_STORAGE_KEY);
+    } catch (error) {
+      console.error('Error clearing history:', error);
     }
   };
 
@@ -305,7 +455,7 @@ export default function App() {
                   ]}
                 />
                 <Text style={styles.receiptBadgeText}>
-                  {selectedProvider.toUpperCase()} RECEIPT
+                  {selectedProvider.toUpperCase()} RECEIPT • {selectedCurrency}
                 </Text>
               </View>
               <Text style={styles.receiptLiveTag}>LIVE PREVIEW</Text>
@@ -405,6 +555,49 @@ export default function App() {
 
           {/* 3. INPUT CONTROLS */}
           <View style={styles.formSection}>
+            {/* Currency Selector */}
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
+                <Text style={styles.label}>Currency</Text>
+                <Text style={styles.activeCurrencyTag}>
+                  Active: {currentCurrencyConfig.id} ({currentCurrencyConfig.symbol})
+                </Text>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chipRow}
+              >
+                {CURRENCIES.map((curr) => {
+                  const isSelected = selectedCurrency === curr.id;
+                  return (
+                    <TouchableOpacity
+                      key={curr.id}
+                      activeOpacity={0.7}
+                      style={[
+                        styles.chip,
+                        isSelected && styles.currencyChipActive,
+                      ]}
+                      onPress={async () => {
+                        await Haptics.selectionAsync();
+                        setSelectedCurrency(curr.id);
+                        persistData(accounts, qrCodes, curr.id);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.chipText,
+                          isSelected && styles.chipTextActive,
+                        ]}
+                      >
+                        {curr.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
             {/* Event / Location Name (Optional) */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>
@@ -423,10 +616,12 @@ export default function App() {
             {/* Numeric Row: Total Bill & Number of People */}
             <View style={styles.row}>
               <View style={[styles.inputGroup, styles.flexTwo]}>
-                <Text style={styles.label}>Total Bill Amount</Text>
+                <Text style={styles.label}>
+                  Total Bill Amount ({currentCurrencyConfig.symbol})
+                </Text>
                 <TextInput
                   style={[styles.input, styles.monoInput]}
-                  placeholder="0"
+                  placeholder={currentCurrencyConfig.sample}
                   placeholderTextColor="#64748B"
                   keyboardType="numeric"
                   value={totalBill}
@@ -582,6 +777,95 @@ export default function App() {
                 {isCopied ? '✓ Copied to Clipboard!' : '📋 Copy Text Only'}
               </Text>
             </TouchableOpacity>
+
+            {/* Save to History Button / Feedback */}
+            <TouchableOpacity
+              style={[
+                styles.saveHistoryButton,
+                !calculation.isValid && styles.buttonDisabled,
+                isSavedFeedback && styles.saveHistoryButtonSuccess,
+              ]}
+              onPress={() => saveCalculationToHistory(calculation)}
+              disabled={!calculation.isValid}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.saveHistoryButtonText,
+                  isSavedFeedback && styles.saveHistoryButtonTextSuccess,
+                ]}
+              >
+                {isSavedFeedback ? '✓ Saved to History!' : '💾 Save to History'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* 6. HISTORY SECTION (Last 5 Calculations in AsyncStorage) */}
+          <View style={styles.historySection}>
+            <View style={styles.historyHeader}>
+              <View style={styles.historyTitleRow}>
+                <Text style={styles.historyIcon}>🕒</Text>
+                <Text style={styles.historyTitle}>Recent Splits</Text>
+                <View style={styles.historyCountBadge}>
+                  <Text style={styles.historyCountText}>{history.length}/5</Text>
+                </View>
+              </View>
+              {history.length > 0 && (
+                <TouchableOpacity
+                  onPress={handleClearHistory}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Text style={styles.clearHistoryText}>Clear</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {history.length === 0 ? (
+              <View style={styles.historyEmptyCard}>
+                <Text style={styles.historyEmptyText}>
+                  No recent splits yet. Your last 5 calculations will be saved to AsyncStorage automatically.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.historyList}>
+                {history.map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.historyCard}
+                    activeOpacity={0.75}
+                    onPress={() => handleRetrieveHistory(item)}
+                  >
+                    <View style={styles.historyCardTop}>
+                      <View style={styles.historyNameRow}>
+                        <Text style={styles.historyEventName} numberOfLines={1}>
+                          {item.eventName}
+                        </Text>
+                        <Text style={styles.historyTime}>{item.dateStr}</Text>
+                      </View>
+                      <View style={styles.historyActionBadge}>
+                        <Text style={styles.historyActionBadgeText}>Load ↗</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.historyCardBottom}>
+                      <View>
+                        <Text style={styles.historyShareLabel}>Per Person</Text>
+                        <Text style={styles.historyShareAmount}>{item.formattedShare}</Text>
+                      </View>
+                      <View style={styles.historyMeta}>
+                        <Text style={styles.historyMetaText}>
+                          Total: {item.formattedTotal}
+                        </Text>
+                        <Text style={styles.historyMetaSub}>
+                          👥 {item.numberOfPeople} people • {item.provider}
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -793,6 +1077,18 @@ const styles = StyleSheet.create({
     color: '#CBD5E1',
     marginBottom: 8,
   },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  activeCurrencyTag: {
+    color: '#60A5FA',
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
   optionalTag: {
     fontSize: 11,
     fontWeight: '400',
@@ -828,6 +1124,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 20,
+  },
+  currencyChipActive: {
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
+    shadowColor: '#2563EB',
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 3,
   },
   chipText: {
     color: '#94A3B8',
@@ -928,6 +1232,167 @@ const styles = StyleSheet.create({
   secondaryButtonTextSuccess: {
     color: '#34D399',
     fontWeight: '700',
+  },
+  saveHistoryButton: {
+    backgroundColor: '#181818',
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveHistoryButtonSuccess: {
+    backgroundColor: '#1E293B',
+    borderColor: '#3B82F6',
+  },
+  saveHistoryButtonText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  saveHistoryButtonTextSuccess: {
+    color: '#60A5FA',
+    fontWeight: '700',
+  },
+  // 6. HISTORY SECTION STYLES
+  historySection: {
+    marginTop: 20,
+    marginBottom: 30,
+    backgroundColor: '#181818',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#262626',
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  historyTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  historyIcon: {
+    fontSize: 15,
+  },
+  historyTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#F1F5F9',
+    letterSpacing: 0.2,
+  },
+  historyCountBadge: {
+    backgroundColor: '#262626',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  historyCountText: {
+    color: '#94A3B8',
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  clearHistoryText: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  historyEmptyCard: {
+    paddingVertical: 18,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  historyEmptyText: {
+    color: '#64748B',
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  historyList: {
+    gap: 10,
+  },
+  historyCard: {
+    backgroundColor: '#202020',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#2D2D2D',
+  },
+  historyCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  historyNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  historyEventName: {
+    color: '#E2E8F0',
+    fontSize: 13,
+    fontWeight: '600',
+    maxWidth: '70%',
+  },
+  historyTime: {
+    color: '#64748B',
+    fontSize: 11,
+  },
+  historyActionBadge: {
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  historyActionBadgeText: {
+    color: '#60A5FA',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  historyCardBottom: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#262626',
+  },
+  historyShareLabel: {
+    color: '#94A3B8',
+    fontSize: 10,
+    textTransform: 'uppercase',
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  historyShareAmount: {
+    color: '#10B981',
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    marginTop: 2,
+  },
+  historyMeta: {
+    alignItems: 'flex-end',
+  },
+  historyMetaText: {
+    color: '#CBD5E1',
+    fontSize: 11,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  historyMetaSub: {
+    color: '#64748B',
+    fontSize: 10,
+    marginTop: 2,
   },
 });
 `;
