@@ -1,27 +1,23 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { PaymentMethod, ProviderConfig, CurrencyCode, CurrencyConfig, HistoryItem } from '../types';
 import {
-  Copy,
-  Check,
   RotateCcw,
-  ShieldCheck,
-  Share2,
-  Image as ImageIcon,
-  Trash2,
-  UploadCloud,
-  Sparkles,
-  Coins,
-  Clock,
-  ArrowUpRight,
-  BookmarkCheck,
-  QrCode,
-  RefreshCw,
-  Users,
-  Eye,
-  Plus,
-  Minus,
-  CheckCircle2,
+  SlidersHorizontal,
 } from 'lucide-react';
+import BottomNavBar, { NavTabType } from './BottomNavBar';
+import SideDrawer from './SideDrawer';
+import HistoryTab from './HistoryTab';
+import PaymentTab from './PaymentTab';
+import SplitTab from './SplitTab';
+import ReceiptModal from './ReceiptModal';
+import {
+  generateReceiptImageBlob,
+  copyReceiptImageOnly,
+  copyQrCodeImageOnly,
+  downloadReceiptImage,
+  blobToDataUrl,
+  ReceiptData,
+} from '../utils/receiptGenerator';
 
 export const CURRENCY_CONFIGS: Record<CurrencyCode, CurrencyConfig> = {
   'MMK': {
@@ -70,7 +66,7 @@ export const CURRENCY_CONFIGS: Record<CurrencyCode, CurrencyConfig> = {
 
 export const SUPPORTED_CURRENCIES: CurrencyCode[] = ['MMK', 'USD', 'EUR', 'THB', 'SGD', 'GBP'];
 
-const PROVIDER_CONFIGS: Record<PaymentMethod, ProviderConfig> = {
+export const PROVIDER_CONFIGS: Record<PaymentMethod, ProviderConfig> = {
   'KPay': {
     name: 'KPay',
     color: '#2563EB',
@@ -101,7 +97,7 @@ const PROVIDER_CONFIGS: Record<PaymentMethod, ProviderConfig> = {
   },
 };
 
-const PAYMENT_METHODS: PaymentMethod[] = ['KPay', 'AYA Pay', 'WavePay', 'Bank Transfer'];
+export const PAYMENT_METHODS: PaymentMethod[] = ['KPay', 'AYA Pay', 'WavePay', 'Bank Transfer'];
 const STORAGE_KEY = 'bill_splitter_data_v2';
 const HISTORY_STORAGE_KEY = '@bill_splitter_history_v1';
 
@@ -137,17 +133,27 @@ export default function MobileSimulator() {
   });
 
   const [isCopied, setIsCopied] = useState(false);
+  const [isCardCopied, setIsCardCopied] = useState(false);
+  const [isQrCopied, setIsQrCopied] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [isSavedFeedback, setIsSavedFeedback] = useState(false);
   const [notificationMsg, setNotificationMsg] = useState<string | null>(null);
 
+  // Receipt Modal state for previewing, direct copying, and downloading
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [receiptModalDataUrl, setReceiptModalDataUrl] = useState<string | null>(null);
+  const [isGeneratingReceipt, setIsGeneratingReceipt] = useState(false);
+
   // Copy formatting options (NO "Your Share" - clean & polite for groups)
   const [includePerPersonInCopy, setIncludePerPersonInCopy] = useState(true);
   const [copyFormatStyle, setCopyFormatStyle] = useState<'friendly' | 'clean'>('friendly');
-  const [showTextPreview, setShowTextPreview] = useState(true);
 
   // History state: last 5 successful bill calculations
   const [history, setHistory] = useState<HistoryItem[]>([]);
+
+  // Navigation & Side Drawer states
+  const [activeNavTab, setActiveNavTab] = useState<NavTabType>('split');
+  const [isSideDrawerOpen, setIsSideDrawerOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -168,19 +174,30 @@ export default function MobileSimulator() {
       if (savedHistory) {
         const parsedHistory = JSON.parse(savedHistory);
         if (Array.isArray(parsedHistory)) {
-          setHistory(parsedHistory.slice(0, 5));
+          setHistory(parsedHistory);
         }
       }
     } catch (e) {
-      console.warn('LocalStorage load error', e);
+      console.warn('LocalStorage error', e);
     }
   }, []);
 
-  // Save to localStorage helper
+  const triggerHaptics = () => {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      navigator.vibrate([40, 30, 40]);
+    }
+  };
+
+  const showToast = (msg: string) => {
+    setNotificationMsg(msg);
+    setTimeout(() => setNotificationMsg(null), 2500);
+  };
+
+  // Helper to persist account, QR codes, and currency
   const persist = (
     updatedAccounts: Record<PaymentMethod, string>,
     updatedQrCodes: Record<PaymentMethod, string | null>,
-    updatedCurrency: CurrencyCode = selectedCurrency
+    updatedCurrency: CurrencyCode
   ) => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -244,22 +261,22 @@ export default function MobileSimulator() {
     const file = e.target.files?.[0];
     if (!file) return;
     processFile(file);
-    // Reset input value so same file can be re-uploaded if desired
     e.target.value = '';
   };
 
   // Quick Demo Bank QR helper for instant preview
-  const handleUseSampleBankQR = () => {
+  const handleSetSampleQR = (method: PaymentMethod) => {
     triggerHaptics();
+    const sample = method === 'KPay' ? SAMPLE_QR_KPAY : method === 'WavePay' ? SAMPLE_QR_WAVEPAY : SAMPLE_QR_BANK;
     setQrCodes((prev) => {
       const updated = {
         ...prev,
-        [selectedMethod]: SAMPLE_QR_BANK,
+        [method]: sample,
       };
       persist(accounts, updated, selectedCurrency);
       return updated;
     });
-    showToast('Demo Bank QR Code applied!');
+    showToast(`Sample ${method} QR attached!`);
   };
 
   const handleRemoveQR = () => {
@@ -275,23 +292,27 @@ export default function MobileSimulator() {
     showToast(`Bank QR Code removed`);
   };
 
-  const triggerHaptics = () => {
-    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-      navigator.vibrate([40, 30, 40]);
+  // Drag and drop handlers for QR codes
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer?.files?.[0];
+    if (file) {
+      processFile(file);
     }
-  };
-
-  const showToast = (msg: string) => {
-    setNotificationMsg(msg);
-    setTimeout(() => setNotificationMsg(null), 2500);
-  };
-
-  // Quick preset helper with currency awareness
-  const handleQuickPreset = (name: string, defaultAmounts: Record<CurrencyCode, string>, people: string) => {
-    triggerHaptics();
-    setEventName(name);
-    setTotalBill(defaultAmounts[selectedCurrency] || defaultAmounts['MMK']);
-    setNumberOfPeople(people);
   };
 
   // Helper to add quick increment to total bill
@@ -356,11 +377,6 @@ export default function MobileSimulator() {
         ? `${currentCurrencyConfig.symbol}${formattedTotalNum}`
         : `${formattedTotalNum} ${currentCurrencyConfig.symbol}`;
 
-    // Conditional text formatted strictly for sharing with friends (NO "Your Share"):
-    // - Polite 'Per Person' phrasing instead of 'Your Share'
-    // - Option to omit per-person share if sender only wants to share total & payment info
-    // - Omit Event Name if empty
-    // - Omit Send via line if Account Number is empty
     const lines: string[] = [];
     const isFriendly = copyFormatStyle === 'friendly';
     const peopleCountStr = peopleNum > 1 ? ` (${peopleNum} people)` : '';
@@ -370,13 +386,16 @@ export default function MobileSimulator() {
     }
     lines.push(isFriendly ? `💰 Total: ${formattedTotal}${peopleCountStr}` : `Total: ${formattedTotal}${peopleCountStr}`);
 
-    // Nicely formatted per-person share without ever saying "Your Share"
     if (includePerPersonInCopy && isValid) {
       lines.push(isFriendly ? `👥 Per Person: ${formattedShare}` : `Per Person: ${formattedShare}`);
     }
 
     if (activeAccount.length > 0) {
       lines.push(isFriendly ? `📱 Send via ${selectedMethod}: ${activeAccount}` : `Send via ${selectedMethod}: ${activeAccount}`);
+    }
+
+    if (activeQR) {
+      lines.push(isFriendly ? `📷 QR Code: Included (Scan with ${selectedMethod})` : `QR Code: Attached (${selectedMethod})`);
     }
 
     const formattedMessage = lines.join('\n');
@@ -395,13 +414,14 @@ export default function MobileSimulator() {
     numberOfPeople,
     selectedMethod,
     activeAccount,
+    activeQR,
     selectedCurrency,
     currentCurrencyConfig,
     includePerPersonInCopy,
     copyFormatStyle,
   ]);
 
-  // Save successful calculation to History (stores last 5 calculations in localStorage)
+  // Save successful calculation to History
   const saveCalculationToHistory = useCallback(
     (customCalculation?: typeof calculation) => {
       const calc = customCalculation || calculation;
@@ -476,6 +496,7 @@ export default function MobileSimulator() {
     setNumberOfPeople(item.numberOfPeople);
     setSelectedCurrency(item.currency);
     setSelectedMethod(item.provider);
+    setActiveNavTab('split');
     showToast(`Restored split: ${item.formattedShare} per person`);
   };
 
@@ -507,7 +528,32 @@ export default function MobileSimulator() {
     showToast('Calculation history cleared');
   };
 
-  // Primary: Share Bill & QR
+  // Helper to compile receipt metadata for canvas and sharing
+  const getReceiptData = useCallback((): ReceiptData => ({
+    eventName: eventName.trim() || 'Bill Split',
+    formattedTotal: calculation.formattedTotal,
+    peopleCount: calculation.peopleNum,
+    formattedShare: calculation.formattedShare,
+    provider: selectedMethod,
+    providerColor: currentConfig.color,
+    accountNumber: activeAccount,
+    qrDataUri: activeQR,
+    currencySymbol: currentCurrencyConfig.symbol,
+    formattedMessage: calculation.formattedMessage,
+  }), [
+    eventName,
+    calculation.formattedTotal,
+    calculation.peopleNum,
+    calculation.formattedShare,
+    calculation.formattedMessage,
+    selectedMethod,
+    currentConfig.color,
+    activeAccount,
+    activeQR,
+    currentCurrencyConfig.symbol,
+  ]);
+
+  // Primary: Share Bill & QR Image (Attaches generated PNG image via Web Share API)
   const handleShare = async () => {
     if (!calculation.isValid) return;
 
@@ -516,25 +562,134 @@ export default function MobileSimulator() {
     saveCalculationToHistory(calculation);
 
     try {
-      if (navigator.share) {
+      const data = getReceiptData();
+      let file: File | null = null;
+      try {
+        const blob = await generateReceiptImageBlob(data);
+        const fileName = `receipt-${selectedMethod.toLowerCase().replace(/\s+/g, '-')}.png`;
+        file = new File([blob], fileName, { type: 'image/png' });
+      } catch (err) {
+        console.warn('Could not generate receipt image for sharing', err);
+      }
+
+      // Check if navigator.share supports file attachment
+      if (file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
-          title: 'Bill Split Summary',
+          title: `${eventName.trim() || 'Bill Split'} Receipt & QR`,
+          text: calculation.formattedMessage,
+          files: [file],
+        });
+        showToast('Shared Receipt with QR image!');
+      } else if (navigator.share) {
+        await navigator.share({
+          title: `${eventName.trim() || 'Bill Split'} Summary`,
           text: calculation.formattedMessage,
         });
-        showToast('Shared successfully!');
+        showToast('Summary shared via chat!');
       } else {
-        // Fallback: Copy to clipboard
-        await navigator.clipboard.writeText(calculation.formattedMessage);
-        showToast('Summary copied to clipboard!');
+        // Fallback: Copy receipt card with QR to clipboard
+        await handleCopyReceiptCard();
       }
-    } catch (e) {
-      console.warn('Share dismissed', e);
+    } catch (e: any) {
+      if (e?.name !== 'AbortError') {
+        console.warn('Share dismissed or failed', e);
+      }
     } finally {
       setIsSharing(false);
     }
   };
 
-  // Secondary: Copy Text Only
+  // Invalidate generated receipt preview if calculation parameters change
+  useEffect(() => {
+    setReceiptModalDataUrl(null);
+  }, [totalBill, numberOfPeople, selectedCurrency, selectedMethod, activeAccount, activeQR, eventName]);
+
+  // Secondary: Copy Receipt Card Image (Copies high-res image/png directly to clipboard)
+  const handleCopyReceiptCard = async () => {
+    if (!calculation.isValid) return;
+
+    triggerHaptics();
+    saveCalculationToHistory(calculation);
+    setIsGeneratingReceipt(true);
+
+    try {
+      const data = getReceiptData();
+      const result = await copyReceiptImageOnly(data);
+      if (result.dataUrl) {
+        setReceiptModalDataUrl(result.dataUrl);
+      }
+
+      if (result.success) {
+        setIsCardCopied(true);
+        showToast('✓ Receipt Image & QR copied! Paste as photo in chat.');
+        setTimeout(() => setIsCardCopied(false), 2500);
+      } else {
+        // Automatic clipboard write is blocked by browser/iframe restrictions
+        // Immediately show the Receipt Preview Modal so user can long-press/right-click or download
+        setIsReceiptModalOpen(true);
+        showToast('Receipt ready! Copy photo or download PNG below.');
+      }
+    } catch (err) {
+      console.error('Clipboard copy receipt image failed', err);
+      setIsReceiptModalOpen(true);
+    } finally {
+      setIsGeneratingReceipt(false);
+    }
+  };
+
+  // Open the Receipt Preview Modal
+  const handleOpenReceiptModal = async () => {
+    if (!calculation.isValid) return;
+    triggerHaptics();
+    setIsReceiptModalOpen(true);
+
+    if (!receiptModalDataUrl) {
+      setIsGeneratingReceipt(true);
+      try {
+        const data = getReceiptData();
+        const blob = await generateReceiptImageBlob(data);
+        const dataUrl = await blobToDataUrl(blob);
+        setReceiptModalDataUrl(dataUrl);
+      } catch (err) {
+        console.warn('Failed to generate modal receipt image', err);
+      } finally {
+        setIsGeneratingReceipt(false);
+      }
+    }
+  };
+
+  // Copy QR Image only to clipboard
+  const handleCopyQrImageOnly = async () => {
+    if (!activeQR) return;
+    triggerHaptics();
+    try {
+      const success = await copyQrCodeImageOnly(activeQR);
+      if (success) {
+        setIsQrCopied(true);
+        showToast('QR Code image copied to clipboard!');
+        setTimeout(() => setIsQrCopied(false), 2000);
+      } else {
+        await downloadReceiptImage(getReceiptData());
+        showToast('QR image downloaded to device!');
+      }
+    } catch (err) {
+      console.error('QR image copy failed', err);
+    }
+  };
+
+  // Download Receipt Image with QR
+  const handleDownloadReceipt = async () => {
+    triggerHaptics();
+    try {
+      const data = getReceiptData();
+      await downloadReceiptImage(data);
+      showToast('Receipt & QR image saved!');
+    } catch (err) {
+      console.error('Download receipt failed', err);
+    }
+  };
+
+  // Tertiary: Copy Text Only
   const handleCopyTextOnly = async () => {
     if (!calculation.isValid) return;
 
@@ -552,8 +707,48 @@ export default function MobileSimulator() {
     }
   };
 
+  // Copy Account Number Only
+  const handleCopyAccountOnly = async () => {
+    if (!activeAccount) return;
+    triggerHaptics();
+    try {
+      await navigator.clipboard.writeText(activeAccount);
+      showToast(`${selectedMethod} number copied!`);
+    } catch (err) {
+      console.error('Account copy failed', err);
+    }
+  };
+
+  // Reset all stored data
+  const handleResetAllData = () => {
+    triggerHaptics();
+    if (typeof window !== 'undefined' && window.confirm('Reset all saved accounts, QR codes, and history?')) {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(HISTORY_STORAGE_KEY);
+      setAccounts({
+        'KPay': '09771234567',
+        'AYA Pay': '09771234567',
+        'WavePay': '09251234119',
+        'Bank Transfer': 'CB Bank - 2001-3849-2910',
+      });
+      setQrCodes({
+        'KPay': SAMPLE_QR_KPAY,
+        'AYA Pay': null,
+        'WavePay': SAMPLE_QR_WAVEPAY,
+        'Bank Transfer': null,
+      });
+      setHistory([]);
+      setSelectedCurrency('MMK');
+      setEventName('Hotpot Dinner');
+      setTotalBill('145000');
+      setNumberOfPeople('4');
+      setIsSideDrawerOpen(false);
+      showToast('All data reset to defaults');
+    }
+  };
+
   return (
-    <div className="w-full max-w-[395px] mx-auto flex flex-col bg-[#101216] text-slate-100 rounded-[3rem] border-[8px] border-[#1F2430] shadow-[0_30px_90px_-15px_rgba(0,0,0,0.95)] overflow-hidden relative ring-1 ring-white/10">
+    <div className="w-full max-w-[395px] mx-auto flex flex-col bg-[#101216] text-slate-100 rounded-[3rem] border-[8px] border-[#1F2430] shadow-[0_30px_90px_-15px_rgba(0,0,0,0.95)] overflow-hidden relative ring-1 ring-white/10 h-[780px]">
       {/* Hidden File Input for QR Code Image Upload */}
       <input
         ref={fileInputRef}
@@ -565,7 +760,7 @@ export default function MobileSimulator() {
       />
 
       {/* Device Status Bar & Dynamic Island */}
-      <div className="px-6 pt-3 pb-2 flex items-center justify-between text-xs font-semibold text-slate-400 select-none bg-[#101216]">
+      <div className="px-6 pt-3 pb-1 flex items-center justify-between text-xs font-semibold text-slate-400 select-none bg-[#101216] shrink-0">
         <span className="text-[13px] font-semibold text-white/90">9:41</span>
         
         {/* Dynamic Island pill */}
@@ -582,846 +777,212 @@ export default function MobileSimulator() {
         </div>
       </div>
 
-      {/* App Header */}
-      <div className="px-6 pt-2 pb-2 flex items-start justify-between">
+      {/* App Header with Pro Badge & Side Tools Drawer Button */}
+      <div className="px-5 pt-2 pb-2.5 flex items-center justify-between border-b border-white/5 bg-[#101216] shrink-0">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black tracking-tight text-white">
+            <h1 className="text-xl font-black tracking-tight text-white">
               Bill Splitter
             </h1>
-            <span className="px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-[10px] font-bold text-blue-400">
+            <span className="px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-[9px] font-bold text-blue-400">
               PRO
             </span>
           </div>
-          <p className="text-slate-400 text-xs font-medium mt-0.5">
-            Clean group splits & payment QR sharing
+          <p className="text-slate-400 text-[11px] font-medium">
+            {activeNavTab === 'split' && 'Split bills & share polite receipts'}
+            {activeNavTab === 'payment' && 'Manage payment info & bank QR'}
+            {activeNavTab === 'history' && 'Past group bill calculations'}
           </p>
         </div>
 
-        <button
-          id="btn-reset-demo"
-          onClick={() => {
-            setEventName('Hotpot Dinner');
-            setTotalBill(currentCurrencyConfig.sampleAmount);
-            setNumberOfPeople('4');
-          }}
-          title="Reset to sample data"
-          className="p-2 text-white/40 hover:text-white hover:bg-white/5 rounded-xl border border-white/5 transition active:scale-95"
-        >
-          <RotateCcw className="w-4 h-4" />
-        </button>
+        {/* Side Drawer Toggle & Quick Reset Action */}
+        <div className="flex items-center gap-1.5">
+          <button
+            id="btn-open-side-drawer"
+            type="button"
+            onClick={() => {
+              triggerHaptics();
+              setIsSideDrawerOpen(true);
+            }}
+            title="Side Tools & Presets"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#1B1F2D] hover:bg-[#23293D] text-slate-300 hover:text-white rounded-xl border border-white/10 transition active:scale-95 text-xs font-semibold"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 text-blue-400" />
+            <span className="text-[11px]">Tools</span>
+          </button>
+
+          <button
+            id="btn-reset-demo"
+            type="button"
+            onClick={() => {
+              triggerHaptics();
+              setEventName('Hotpot Dinner');
+              setTotalBill(currentCurrencyConfig.sampleAmount);
+              setNumberOfPeople('4');
+              showToast('Reset to demo split');
+            }}
+            title="Reset to sample data"
+            className="p-1.5 text-white/40 hover:text-white hover:bg-white/5 rounded-xl border border-white/5 transition active:scale-95"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
-      {/* Quick Demo Presets */}
-      <div className="px-6 py-1.5 flex items-center gap-1.5 overflow-x-auto text-xs no-scrollbar">
-        <span className="text-[10px] uppercase font-bold tracking-wider text-white/30 whitespace-nowrap">Presets:</span>
-        <button
-          onClick={() =>
-            handleQuickPreset(
-              'Hotpot Dinner',
-              { MMK: '145000', USD: '140.00', EUR: '130.00', THB: '4800', SGD: '180.00', GBP: '110.00' },
-              '4'
-            )
-          }
-          className="px-2.5 py-1 bg-[#1A1D24] hover:bg-[#232732] text-slate-300 text-[11px] font-medium rounded-lg border border-white/5 transition whitespace-nowrap active:scale-95"
-        >
-          🍲 Hotpot (4p)
-        </button>
-        <button
-          onClick={() =>
-            handleQuickPreset(
-              'Friday Ride',
-              { MMK: '18500', USD: '24.00', EUR: '21.00', THB: '450', SGD: '30.00', GBP: '18.00' },
-              '3'
-            )
-          }
-          className="px-2.5 py-1 bg-[#1A1D24] hover:bg-[#232732] text-slate-300 text-[11px] font-medium rounded-lg border border-white/5 transition whitespace-nowrap active:scale-95"
-        >
-          🚕 Ride (3p)
-        </button>
-        <button
-          onClick={() =>
-            handleQuickPreset(
-              'Coffee & Boba',
-              { MMK: '14000', USD: '14.00', EUR: '12.50', THB: '280', SGD: '18.00', GBP: '11.00' },
-              '2'
-            )
-          }
-          className="px-2.5 py-1 bg-[#1A1D24] hover:bg-[#232732] text-slate-300 text-[11px] font-medium rounded-lg border border-white/5 transition whitespace-nowrap active:scale-95"
-        >
-          ☕ Boba (2p)
-        </button>
-      </div>
-
-      {/* Main Scrollable Content */}
-      <div className="px-6 pt-2 pb-6 space-y-4 overflow-y-auto max-h-[660px] scrollbar-thin">
-        
-        {/* 2. THE "PREMIUM RECEIPT" LIVE PREVIEW */}
-        <div className="bg-[#171A21] border border-[#2B3140] rounded-2xl p-4 shadow-2xl relative overflow-hidden">
-          {/* Subtle Ambient Radial Glow */}
-          <div
-            className="absolute -top-10 -right-10 w-36 h-36 rounded-full blur-3xl opacity-20 pointer-events-none"
-            style={{ backgroundColor: currentConfig.color }}
+      {/* Main Content Area (Conditionally renders based on activeNavTab) */}
+      <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3 scrollbar-thin">
+        {activeNavTab === 'split' && (
+          <SplitTab
+            eventName={eventName}
+            setEventName={setEventName}
+            totalBill={totalBill}
+            setTotalBill={setTotalBill}
+            numberOfPeople={numberOfPeople}
+            setNumberOfPeople={setNumberOfPeople}
+            selectedCurrency={selectedCurrency}
+            currentCurrencyConfig={currentCurrencyConfig}
+            selectedMethod={selectedMethod}
+            currentConfig={currentConfig}
+            activeAccount={activeAccount}
+            activeQR={activeQR}
+            calculation={{
+              total: calculation.billNum,
+              peopleCount: calculation.peopleNum,
+              share: calculation.billNum / (calculation.peopleNum || 1),
+              isValid: calculation.isValid,
+              formattedTotal: calculation.formattedTotal,
+              formattedShare: calculation.formattedShare,
+              formattedMessage: calculation.formattedMessage,
+            }}
+            handleAddAmount={handleAddAmount}
+            triggerHaptics={triggerHaptics}
+            handleShare={handleShare}
+            handleOpenReceiptModal={handleOpenReceiptModal}
+            handleCopyReceiptCard={handleCopyReceiptCard}
+            handleCopyQrImageOnly={handleCopyQrImageOnly}
+            handleCopyTextOnly={handleCopyTextOnly}
+            handleCopyAccountOnly={handleCopyAccountOnly}
+            handleDownloadReceipt={handleDownloadReceipt}
+            saveCalculationToHistory={saveCalculationToHistory}
+            isSharing={isSharing}
+            isCardCopied={isCardCopied}
+            isQrCopied={isQrCopied}
+            isCopied={isCopied}
+            isSavedFeedback={isSavedFeedback}
+            formatNumber={formatNumber}
+            onOpenPaymentTab={() => {
+              triggerHaptics();
+              setActiveNavTab('payment');
+            }}
+            onOpenSideDrawer={() => {
+              triggerHaptics();
+              setIsSideDrawerOpen(true);
+            }}
           />
+        )}
 
-          {/* Top Receipt Badge */}
-          <div className="flex items-center justify-between mb-3 relative z-10">
-            <div className="flex items-center gap-2 bg-[#1F232E] px-2.5 py-1 rounded-full border border-white/5">
-              <span
-                className="w-2 h-2 rounded-full shadow-sm"
-                style={{ backgroundColor: currentConfig.color }}
-              />
-              <span className="text-[10px] font-bold tracking-wider text-slate-200 uppercase">
-                {selectedMethod} RECEIPT • {selectedCurrency}
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded">
-                {currentCurrencyConfig.symbol}
-              </span>
-              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded uppercase tracking-wider">
-                READY TO SHARE
-              </span>
-            </div>
-          </div>
+        {activeNavTab === 'payment' && (
+          <PaymentTab
+            selectedMethod={selectedMethod}
+            setSelectedMethod={setSelectedMethod}
+            accounts={accounts}
+            handleAccountChange={handleAccountChange}
+            handleCopyAccountOnly={handleCopyAccountOnly}
+            handleCopyQrImageOnly={handleCopyQrImageOnly}
+            handleDownloadReceipt={handleDownloadReceipt}
+            isQrCopied={isQrCopied}
+            activeQR={activeQR}
+            fileInputRef={fileInputRef}
+            handleRemoveQR={handleRemoveQR}
+            handleSetSampleQR={handleSetSampleQR}
+            isDragging={isDragging}
+            handleDragOver={handleDragOver}
+            handleDragLeave={handleDragLeave}
+            handleDrop={handleDrop}
+            triggerHaptics={triggerHaptics}
+            onBackToSplit={() => {
+              triggerHaptics();
+              setActiveNavTab('split');
+            }}
+            paymentMethods={PAYMENT_METHODS}
+            providerConfigs={PROVIDER_CONFIGS}
+            qrCodes={qrCodes}
+          />
+        )}
 
-          {/* Receipt Body: Formatted Text with Monospace Math */}
-          <div className="space-y-2 text-xs text-slate-200 relative z-10">
-            {eventName.trim().length > 0 && (
-              <div className="flex items-center gap-2 bg-white/5 px-2.5 py-1.5 rounded-lg border border-white/5">
-                <span className="text-sm">🍽️</span>
-                <span className="font-bold text-white truncate text-xs">{eventName.trim()}</span>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between py-0.5 px-1">
-              <div className="flex items-center gap-2 text-slate-400">
-                <span>💰</span>
-                <span>Total Amount:</span>
-              </div>
-              <span className="font-mono font-bold text-slate-100 text-sm">
-                {calculation.formattedTotal}
-              </span>
-            </div>
-
-            {/* HIGH-CONTRAST PER-PERSON BLOCK (Polite, NO 'Your Share') */}
-            <div className="flex items-center justify-between bg-gradient-to-r from-[#202533] to-[#181C26] px-3.5 py-2.5 rounded-xl border border-white/10 shadow-inner relative overflow-hidden">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-sm">
-                  👥
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-white block">Per Person</span>
-                  <span className="text-[10px] text-slate-400">
-                    Equal split ({calculation.peopleNum || 1} {calculation.peopleNum === 1 ? 'person' : 'people'})
-                  </span>
-                </div>
-              </div>
-              <div className="text-right">
-                <span
-                  className="font-mono font-extrabold text-base tracking-tight block"
-                  style={{ color: currentConfig.color }}
-                >
-                  {calculation.formattedShare}
-                </span>
-                <span className="text-[9px] font-medium text-slate-400">
-                  each
-                </span>
-              </div>
-            </div>
-
-            {activeAccount.length > 0 && (
-              <div className="flex items-center justify-between bg-[#12151C] px-3 py-2 rounded-xl border border-white/5">
-                <div className="flex items-center gap-2 min-w-0 pr-2">
-                  <span className="text-sm">📱</span>
-                  <div className="min-w-0">
-                    <span className="text-[10px] text-slate-400 block font-medium uppercase tracking-wider">
-                      Send via {selectedMethod}
-                    </span>
-                    <span className="font-mono text-slate-200 font-bold text-xs truncate block">
-                      {activeAccount}
-                    </span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(activeAccount);
-                    triggerHaptics();
-                    showToast(`Copied ${selectedMethod} account!`);
-                  }}
-                  className="px-2 py-1 bg-white/10 hover:bg-white/15 text-[10px] font-bold text-slate-200 rounded-md transition whitespace-nowrap active:scale-95"
-                >
-                  Copy No.
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Dashed Horizontal Divider */}
-          <div className="border-b border-dashed border-[#343B4E] my-3.5 relative z-10" />
-
-          {/* Receipt Bottom: Centered Glowing QR Code Preview */}
-          <div className="flex flex-col items-center justify-center relative z-10">
-            {activeQR ? (
-              <div className="flex flex-col items-center text-center">
-                <div
-                  className="w-[104px] h-[104px] rounded-2xl overflow-hidden p-1.5 bg-black border-2 transition-all flex items-center justify-center shadow-lg"
-                  style={{
-                    borderColor: currentConfig.color,
-                    boxShadow: `0 0 16px ${currentConfig.color}40`,
-                  }}
-                >
-                  <img
-                    src={activeQR}
-                    alt="Payment QR Code"
-                    className="w-full h-full object-cover rounded-xl"
-                  />
-                </div>
-                <div className="flex items-center gap-1.5 mt-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-[11px] text-slate-200 font-semibold">
-                    Scan with Any Banking App
-                  </span>
-                </div>
-                <span className="text-[10px] text-slate-400 mt-0.5">
-                  KBZPay • Wave • AYA • CB Bank & all wallets
-                </span>
-              </div>
-            ) : (
-              <button
-                type="button"
-                id="btn-receipt-attach-qr"
-                onClick={() => fileInputRef.current?.click()}
-                className="flex flex-col items-center justify-center py-3 px-4 rounded-xl border border-dashed border-white/15 hover:border-blue-500/50 hover:bg-blue-500/5 w-full group transition text-center"
-              >
-                <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center mb-1 group-hover:bg-blue-500/20 transition">
-                  <QrCode className="w-4 h-4 text-slate-400 group-hover:text-blue-400 transition" />
-                </div>
-                <span className="text-xs font-semibold text-slate-300 group-hover:text-white transition">
-                  + Attach Any Bank or Wallet QR Code
-                </span>
-                <span className="text-[10px] text-slate-400 mt-0.5">
-                  Tap to upload QR screenshot (KBZ, AYA, Wave, CB, etc.)
-                </span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* 3. INPUT CONTROLS */}
-        <div className="space-y-3.5">
-          {/* Currency Selector */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                <Coins className="w-3.5 h-3.5 text-amber-400" />
-                Currency
-              </label>
-              <span className="text-[10px] text-slate-400 font-mono">
-                <strong className="text-blue-400">{currentCurrencyConfig.code}</strong> ({currentCurrencyConfig.symbol})
-              </span>
-            </div>
-            <div className="grid grid-cols-6 gap-1 p-1 bg-[#181818] border border-[#2A2A2A] rounded-2xl">
-              {SUPPORTED_CURRENCIES.map((code) => {
-                const isSelected = selectedCurrency === code;
-                const config = CURRENCY_CONFIGS[code];
-                return (
-                  <button
-                    key={code}
-                    id={`btn-currency-${code.toLowerCase()}`}
-                    type="button"
-                    onClick={() => handleCurrencyChange(code)}
-                    className={`py-1.5 px-1 rounded-xl text-xs font-semibold flex flex-col items-center justify-center transition-all ${
-                      isSelected
-                        ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                        : 'text-slate-400 hover:text-white hover:bg-white/5'
-                    }`}
-                    title={`${config.name} (${config.symbol})`}
-                  >
-                    <span className="text-xs font-bold leading-tight">{config.symbol}</span>
-                    <span className="text-[9px] opacity-75 font-mono">{code}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Event / Location Name (Optional) */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-semibold text-slate-300">
-                Event / Location Name
-              </label>
-              <span className="text-[10px] text-slate-500">Optional</span>
-            </div>
-            <input
-              id="input-event-name"
-              type="text"
-              placeholder="e.g., Hotpot Dinner, Grab ride"
-              value={eventName}
-              onChange={(e) => setEventName(e.target.value)}
-              className="w-full bg-[#1E1E1E] border border-[#2E2E2E] focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none transition"
-            />
-          </div>
-
-          {/* Numeric Row: Amount & Split */}
-          <div className="grid grid-cols-12 gap-3">
-            <div className="col-span-7">
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-semibold text-slate-300 block">
-                  Total Bill Amount
-                </label>
-                <span className="text-[10px] text-slate-400 font-mono font-semibold">
-                  {currentCurrencyConfig.symbol}
-                </span>
-              </div>
-              <div className="relative flex items-center">
-                {currentCurrencyConfig.placement === 'prefix' && (
-                  <span className="absolute left-3.5 font-mono font-bold text-blue-400 text-sm pointer-events-none select-none">
-                    {currentCurrencyConfig.symbol}
-                  </span>
-                )}
-                <input
-                  id="input-total-bill"
-                  type="text"
-                  inputMode="decimal"
-                  placeholder={currentCurrencyConfig.sampleAmount}
-                  value={totalBill}
-                  onChange={(e) => setTotalBill(e.target.value)}
-                  className={`w-full bg-[#1A1D24] border border-[#2B3140] focus:border-blue-500 rounded-xl py-2.5 text-sm font-mono font-semibold text-white placeholder:text-slate-500 outline-none transition ${
-                    currentCurrencyConfig.placement === 'prefix' ? 'pl-8 pr-3.5' : 'pl-3.5 pr-12'
-                  }`}
-                />
-                {currentCurrencyConfig.placement === 'suffix' && (
-                  <span className="absolute right-3 font-mono font-bold text-blue-400 text-xs pointer-events-none select-none bg-[#242938] px-1.5 py-0.5 rounded border border-white/10">
-                    {currentCurrencyConfig.symbol}
-                  </span>
-                )}
-              </div>
-
-              {/* Quick Increment Chips */}
-              <div className="flex items-center gap-1.5 mt-1.5">
-                <span className="text-[9px] text-slate-500 font-medium uppercase">Add:</span>
-                {(['MMK', 'THB'].includes(selectedCurrency)
-                  ? [5000, 10000, 50000]
-                  : [5, 10, 25]
-                ).map((inc) => (
-                  <button
-                    key={inc}
-                    type="button"
-                    onClick={() => handleAddAmount(inc)}
-                    className="px-1.5 py-0.5 bg-[#202532] hover:bg-[#282F3F] border border-white/5 rounded text-[10px] font-mono font-bold text-slate-300 transition active:scale-95"
-                  >
-                    +{formatNumber(inc)}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="col-span-5">
-              <label className="text-xs font-semibold text-slate-300 mb-1 block">
-                No. of People
-              </label>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptics();
-                    const current = parseInt(numberOfPeople, 10) || 1;
-                    if (current > 1) setNumberOfPeople(String(current - 1));
-                  }}
-                  className="w-8 h-10 bg-[#1A1D24] border border-[#2B3140] hover:bg-[#232732] rounded-lg text-slate-300 text-base font-bold flex items-center justify-center transition active:scale-95"
-                >
-                  -
-                </button>
-                <input
-                  id="input-people-count"
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="2"
-                  value={numberOfPeople}
-                  onChange={(e) => setNumberOfPeople(e.target.value)}
-                  className="w-full bg-[#1A1D24] border border-[#2B3140] focus:border-blue-500 rounded-xl py-2 text-center text-sm font-mono font-semibold text-white placeholder:text-slate-500 outline-none transition"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptics();
-                    const current = parseInt(numberOfPeople, 10) || 0;
-                    setNumberOfPeople(String(current + 1));
-                  }}
-                  className="w-8 h-10 bg-[#1A1D24] border border-[#2B3140] hover:bg-[#232732] rounded-lg text-slate-300 text-base font-bold flex items-center justify-center transition active:scale-95"
-                >
-                  +
-                </button>
-              </div>
-
-              {/* Quick People Count Pills */}
-              <div className="flex items-center justify-between gap-1 mt-1.5">
-                {['2', '3', '4', '5'].map((num) => (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() => {
-                      triggerHaptics();
-                      setNumberOfPeople(num);
-                    }}
-                    className={`flex-1 py-0.5 rounded text-[10px] font-mono font-bold transition active:scale-95 ${
-                      numberOfPeople === num
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-[#202532] text-slate-400 hover:text-slate-200 border border-white/5'
-                    }`}
-                  >
-                    {num}p
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Payment Method Selector (Horizontal Chips) */}
-          <div>
-            <label className="text-xs font-semibold text-slate-300 mb-1.5 block">
-              Payment Provider
-            </label>
-            <div className="flex gap-2 overflow-x-auto py-1 no-scrollbar">
-              {PAYMENT_METHODS.map((method) => {
-                const isSelected = selectedMethod === method;
-                const config = PROVIDER_CONFIGS[method];
-                const hasQR = !!qrCodes[method];
-                return (
-                  <button
-                    key={method}
-                    id={`btn-payment-${method.toLowerCase().replace(/\s+/g, '-')}`}
-                    type="button"
-                    onClick={() => {
-                      triggerHaptics();
-                      setSelectedMethod(method);
-                    }}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                      isSelected
-                        ? 'text-white shadow-lg'
-                        : 'bg-[#1E1E1E] border border-[#2E2E2E] text-slate-400 hover:text-slate-200'
-                    }`}
-                    style={
-                      isSelected
-                        ? {
-                            backgroundColor: config.color,
-                            boxShadow: `0 4px 12px ${config.color}50`,
-                          }
-                        : undefined
-                    }
-                  >
-                    {isSelected && <Check className="w-3 h-3 text-white" />}
-                    <span>{method}</span>
-                    {hasQR && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Account / Phone Number */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-semibold text-slate-300">
-                {selectedMethod} Phone / Account Number
-              </label>
-              <span className="text-[10px] text-emerald-400 flex items-center gap-1 font-medium">
-                <ShieldCheck className="w-3 h-3" />
-                AsyncStorage
-              </span>
-            </div>
-            <input
-              id="input-account-number"
-              type="text"
-              placeholder={`Enter your ${selectedMethod} details`}
-              value={accounts[selectedMethod] || ''}
-              onChange={(e) => handleAccountChange(e.target.value)}
-              className="w-full bg-[#1E1E1E] border border-[#2E2E2E] focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-sm font-mono text-white placeholder:text-slate-500 outline-none transition"
-            />
-          </div>
-
-          {/* Bank / Payment QR Code Section (Supports Any Bank or Wallet) */}
-          <div className="bg-[#181818] border border-[#282828] rounded-2xl p-3.5 space-y-2.5">
-            {/* Header with clear title and friendly multi-bank badge */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400">
-                  <QrCode className="w-3.5 h-3.5" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-200">Bank / Payment QR Code</h4>
-                </div>
-              </div>
-              <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-                Any Bank Accepted
-              </span>
-            </div>
-
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              Upload screenshot from <strong>any</strong> bank or wallet app (KBZPay, WavePay, AYA, CB Bank, PromptPay, etc.).
-            </p>
-
-            {/* Active QR Preview Card or Drag-and-Drop Dropzone */}
-            {activeQR ? (
-              <div className="bg-[#202020] border border-[#2E2E2E] rounded-xl p-3 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-lg bg-black border border-white/15 p-1 flex-shrink-0 flex items-center justify-center overflow-hidden shadow-inner">
-                    <img
-                      src={activeQR}
-                      alt="Uploaded Bank QR"
-                      className="w-full h-full object-cover rounded"
-                    />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                      <span className="text-xs font-bold text-slate-200">
-                        Bank QR Attached
-                      </span>
-                    </div>
-                    <span className="text-[10px] text-slate-400 block mt-0.5">
-                      Ready for receipts & 1-tap sharing
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    id="btn-replace-bank-qr"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="px-2.5 py-1.5 bg-[#2A2A2A] hover:bg-[#333333] border border-white/10 text-slate-200 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition active:scale-95"
-                    title="Upload another bank QR code"
-                  >
-                    <RefreshCw className="w-3 h-3 text-slate-400" />
-                    <span>Change QR</span>
-                  </button>
-                  <button
-                    type="button"
-                    id="btn-remove-bank-qr"
-                    onClick={handleRemoveQR}
-                    className="p-1.5 bg-red-950/40 hover:bg-red-900/60 border border-red-900/50 text-red-400 rounded-lg transition active:scale-95"
-                    title="Remove QR code"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDragging(true);
-                }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setIsDragging(false);
-                  const file = e.dataTransfer.files?.[0];
-                  if (file) processFile(file);
-                }}
-                className={`border-2 border-dashed rounded-xl p-4 text-center transition-all ${
-                  isDragging
-                    ? 'border-blue-500 bg-blue-500/10'
-                    : 'border-[#333333] hover:border-slate-500 bg-[#1C1C1C]'
-                }`}
-              >
-                <div className="flex flex-col items-center justify-center gap-1.5">
-                  <div className="w-9 h-9 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400 mb-0.5">
-                    <UploadCloud className="w-5 h-5" />
-                  </div>
-                  <button
-                    type="button"
-                    id="btn-upload-bank-qr"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="text-xs font-bold text-white hover:text-blue-400 transition"
-                  >
-                    Upload Any Bank QR Code
-                  </button>
-                  <p className="text-[10px] text-slate-400 max-w-[240px]">
-                    Tap to browse or drag & drop QR screenshot
-                  </p>
-
-                  <div className="pt-2 flex items-center justify-center gap-2">
-                    <button
-                      type="button"
-                      id="btn-choose-qr-file"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow-sm transition active:scale-95"
-                    >
-                      Choose Image
-                    </button>
-                    <button
-                      type="button"
-                      id="btn-use-sample-qr"
-                      onClick={handleUseSampleBankQR}
-                      className="px-3 py-1.5 bg-[#262626] hover:bg-[#303030] text-slate-300 border border-white/10 text-xs font-semibold rounded-lg transition active:scale-95"
-                    >
-                      ✨ Try Demo QR
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 5. ACTION BUTTONS & SHARING HUB */}
-        <div className="space-y-3 pt-2">
-          {/* Live Copy Text Preview Box */}
-          <div className="bg-[#151821] border border-[#282E3E] rounded-2xl p-3.5 shadow-lg relative">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-blue-400" />
-                <span className="text-[11px] font-bold text-slate-200 uppercase tracking-wider">
-                  Text to Share Preview
-                </span>
-              </div>
-
-              {/* Format Style Selector */}
-              <div className="flex items-center gap-1 bg-[#1A1E29] p-0.5 rounded-lg border border-white/5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptics();
-                    setCopyFormatStyle('friendly');
-                  }}
-                  className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition ${
-                    copyFormatStyle === 'friendly'
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  ✨ Emoji
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptics();
-                    setCopyFormatStyle('clean');
-                  }}
-                  className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition ${
-                    copyFormatStyle === 'clean'
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  📝 Plain
-                </button>
-              </div>
-            </div>
-
-            {/* Monospace Code Preview Box */}
-            <div className="bg-[#0E1017] border border-white/5 rounded-xl p-2.5 font-mono text-[11px] text-slate-300 leading-relaxed whitespace-pre-line select-all">
-              {calculation.formattedMessage}
-            </div>
-
-            {/* Toggle: Include Per Person Amount */}
-            <div className="flex items-center justify-between pt-2.5 px-0.5">
-              <div className="flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5 text-slate-400" />
-                <span className="text-[11px] text-slate-300 font-medium">
-                  Include split line ({calculation.formattedShare})
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptics();
-                  setIncludePerPersonInCopy((prev) => !prev);
-                }}
-                className={`w-8 h-4.5 rounded-full transition-colors relative flex items-center p-0.5 ${
-                  includePerPersonInCopy ? 'bg-blue-600 justify-end' : 'bg-slate-700 justify-start'
-                }`}
-              >
-                <span className="w-3.5 h-3.5 rounded-full bg-white shadow-sm block" />
-              </button>
-            </div>
-          </div>
-
-          {/* Primary: Share Bill & QR */}
-          <button
-            id="btn-share-bill-qr"
-            type="button"
-            disabled={!calculation.isValid || isSharing}
-            onClick={handleShare}
-            className={`w-full font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-xl transition-all ${
-              calculation.isValid
-                ? 'text-white active:scale-[0.98]'
-                : 'bg-[#1A1D24] text-slate-600 border border-[#2B3140] cursor-not-allowed opacity-60'
-            }`}
-            style={
-              calculation.isValid
-                ? {
-                    backgroundColor: currentConfig.color,
-                    boxShadow: `0 4px 20px ${currentConfig.color}60`,
-                  }
-                : undefined
-            }
-          >
-            <Share2 className="w-4 h-4" />
-            <span className="text-sm font-extrabold tracking-wide">
-              {isSharing
-                ? 'Opening Share Dialog...'
-                : activeQR
-                ? 'Share Bill & QR Code'
-                : 'Share Bill Summary'}
-            </span>
-          </button>
-
-          {/* Secondary: Copy Text Only */}
-          <button
-            id="btn-copy-text-only"
-            type="button"
-            disabled={!calculation.isValid || isCopied}
-            onClick={handleCopyTextOnly}
-            className={`w-full font-semibold py-3 rounded-2xl flex items-center justify-center gap-2 border transition-all text-xs active:scale-[0.98] ${
-              isCopied
-                ? 'bg-emerald-950/60 border-emerald-500 text-emerald-300 shadow-md'
-                : calculation.isValid
-                ? 'bg-[#181B24] border-[#2A3142] hover:bg-[#202533] text-slate-200'
-                : 'bg-[#14161E] border-[#222735] text-slate-600 cursor-not-allowed'
-            }`}
-          >
-            {isCopied ? (
-              <>
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span className="font-bold">✓ Clean Text Copied!</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-3.5 h-3.5 text-blue-400" />
-                <span>📋 Copy Text Only (Ready to Share)</span>
-              </>
-            )}
-          </button>
-
-          {/* Manual Save to History Button / Feedback */}
-          <button
-            id="btn-save-to-history"
-            type="button"
-            disabled={!calculation.isValid}
-            onClick={() => saveCalculationToHistory(calculation)}
-            className={`w-full font-semibold py-2.5 rounded-2xl flex items-center justify-center gap-2 border transition-all text-xs active:scale-[0.98] ${
-              isSavedFeedback
-                ? 'bg-blue-950/50 border-blue-500 text-blue-300'
-                : calculation.isValid
-                ? 'bg-[#14161F] border-[#232838] hover:bg-[#1C2130] text-slate-300'
-                : 'bg-[#12141A] border-[#1C202B] text-slate-600 cursor-not-allowed'
-            }`}
-          >
-            {isSavedFeedback ? (
-              <>
-                <BookmarkCheck className="w-3.5 h-3.5 text-blue-400" />
-                <span>✓ Saved to History!</span>
-              </>
-            ) : (
-              <>
-                <Clock className="w-3.5 h-3.5 text-slate-400" />
-                <span>Save to History</span>
-              </>
-            )}
-          </button>
-
-          {notificationMsg && (
-            <p className="text-center text-xs text-emerald-400 font-medium animate-fade-in pt-1">
-              ✓ {notificationMsg}
-            </p>
-          )}
-        </div>
-
-        {/* 6. HISTORY SECTION (Last 5 Calculations in Storage) */}
-        <div className="mt-5 bg-[#181818] border border-[#262626] rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-slate-400" />
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200">
-                Recent Splits
-              </h3>
-              <span className="px-1.5 py-0.5 rounded-full bg-[#262626] text-[10px] font-mono text-slate-400">
-                {history.length}/5
-              </span>
-            </div>
-            {history.length > 0 && (
-              <button
-                type="button"
-                onClick={handleClearHistory}
-                className="text-[11px] font-medium text-red-400 hover:text-red-300 transition flex items-center gap-1"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-
-          {history.length === 0 ? (
-            <div className="py-4 text-center">
-              <p className="text-xs text-slate-500 leading-relaxed">
-                No recent splits yet. Your last 5 calculations will automatically appear here for quick retrieval.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {history.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => handleRetrieveHistory(item)}
-                  className="group p-2.5 bg-[#202020] hover:bg-[#252525] border border-[#2D2D2D] hover:border-slate-600 rounded-xl transition-all cursor-pointer select-none"
-                  title="Click to retrieve calculation"
-                >
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-xs font-semibold text-slate-200 truncate">
-                        {item.eventName}
-                      </span>
-                      <span className="text-[10px] text-slate-500 font-mono flex-shrink-0">
-                        • {item.dateStr}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <span className="text-[10px] font-semibold text-blue-400 group-hover:text-blue-300 flex items-center gap-0.5 bg-blue-950/40 border border-blue-900/50 px-1.5 py-0.5 rounded-md transition">
-                        <span>Load</span>
-                        <ArrowUpRight className="w-2.5 h-2.5" />
-                      </span>
-                      <button
-                        type="button"
-                        title="Delete this history item"
-                        onClick={(e) => handleDeleteHistoryItem(item.id, e)}
-                        className="p-1 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors border border-transparent hover:border-red-500/20 active:scale-90"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-end justify-between pt-1.5 border-t border-white/5">
-                    <div>
-                      <span className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold block">
-                        Per Person
-                      </span>
-                      <span className="text-sm font-bold font-mono text-emerald-400">
-                        {item.formattedShare}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[11px] font-mono text-slate-300 block">
-                        Total: {item.formattedTotal}
-                      </span>
-                      <span className="text-[10px] text-slate-500">
-                        {item.numberOfPeople} people • {item.provider}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {activeNavTab === 'history' && (
+          <HistoryTab
+            history={history}
+            onRetrieveHistory={handleRetrieveHistory}
+            onDeleteHistoryItem={handleDeleteHistoryItem}
+            onClearHistory={handleClearHistory}
+            onStartNewSplit={() => {
+              triggerHaptics();
+              setActiveNavTab('split');
+            }}
+          />
+        )}
       </div>
+
+      {/* In-app Toast Notification */}
+      {notificationMsg && (
+        <div className="absolute top-14 left-1/2 -translate-x-1/2 z-40 bg-blue-600/95 text-white text-[11px] font-semibold px-3 py-1.5 rounded-full shadow-2xl backdrop-blur-xs border border-white/20 animate-in fade-in slide-in-from-top duration-200 pointer-events-none">
+          {notificationMsg}
+        </div>
+      )}
+
+      {/* Bottom Navigation Bar */}
+      <BottomNavBar
+        activeNavTab={activeNavTab}
+        setActiveNavTab={setActiveNavTab}
+        historyCount={history.length}
+        triggerHaptics={triggerHaptics}
+      />
+
+      {/* iOS Home Indicator Bar */}
+      <div className="py-1 flex justify-center bg-[#101216] select-none shrink-0">
+        <div className="w-28 h-1 bg-white/20 rounded-full" />
+      </div>
+
+      {/* Side Tab Drawer */}
+      <SideDrawer
+        isOpen={isSideDrawerOpen}
+        onClose={() => setIsSideDrawerOpen(false)}
+        selectedCurrency={selectedCurrency}
+        onCurrencyChange={handleCurrencyChange}
+        onSelectPreset={(name, amounts, people) => {
+          triggerHaptics();
+          setEventName(name);
+          if (amounts[selectedCurrency]) {
+            setTotalBill(amounts[selectedCurrency]!);
+          }
+          setNumberOfPeople(people);
+          setIsSideDrawerOpen(false);
+          setActiveNavTab('split');
+          showToast(`Loaded "${name}" preset`);
+        }}
+        copyFormatStyle={copyFormatStyle}
+        setCopyFormatStyle={setCopyFormatStyle}
+        includePerPersonInCopy={includePerPersonInCopy}
+        setIncludePerPersonInCopy={setIncludePerPersonInCopy}
+        formattedMessage={calculation.formattedMessage}
+        onResetAllData={handleResetAllData}
+        triggerHaptics={triggerHaptics}
+      />
+
+      {/* Full-Screen Receipt Image & QR Preview Modal */}
+      <ReceiptModal
+        isOpen={isReceiptModalOpen}
+        onClose={() => setIsReceiptModalOpen(false)}
+        receiptDataUrl={receiptModalDataUrl}
+        isGenerating={isGeneratingReceipt}
+        onCopyImage={handleCopyReceiptCard}
+        onDownload={handleDownloadReceipt}
+        onShare={handleShare}
+        isImageCopied={isCardCopied}
+        selectedMethod={selectedMethod}
+        hasQR={Boolean(activeQR)}
+      />
     </div>
   );
 }

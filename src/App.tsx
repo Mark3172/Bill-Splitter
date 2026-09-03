@@ -186,6 +186,23 @@ export default function App() {
         )}
       </main>
 
+      {/* Floating Scan for Mobile Quick Action */}
+      <div className="fixed bottom-5 right-5 z-40">
+        <button
+          id="btn-floating-mobile-qr"
+          onClick={() => setIsTestModalOpen(true)}
+          className="group flex items-center gap-2.5 bg-blue-600 hover:bg-blue-500 text-white pl-3.5 pr-4 py-3 rounded-2xl shadow-[0_10px_30px_-5px_rgba(37,99,235,0.5)] border border-blue-400/30 transition-all duration-200 active:scale-95 hover:shadow-[0_15px_35px_-5px_rgba(37,99,235,0.7)]"
+        >
+          <div className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center">
+            <QrCode className="w-4 h-4 text-white" />
+          </div>
+          <div className="text-left">
+            <span className="block text-xs font-bold leading-tight">Scan on Mobile</span>
+            <span className="block text-[10px] text-blue-100/70 font-medium">Camera QR Preview</span>
+          </div>
+        </button>
+      </div>
+
       {/* Test on Mobile Modal */}
       <MobileTestGuide
         isOpen={isTestModalOpen}

@@ -8,13 +8,18 @@ interface MobileTestGuideProps {
 }
 
 export default function MobileTestGuide({ isOpen, onClose }: MobileTestGuideProps) {
-  const [currentUrl, setCurrentUrl] = useState('');
+  const DEFAULT_DEV_URL = 'https://ais-dev-nmllknqpayu5qetudpqd2y-658469413803.asia-northeast1.run.app';
+  const [currentUrl, setCurrentUrl] = useState(DEFAULT_DEV_URL);
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [activeSubTab, setActiveSubTab] = useState<'instant-web' | 'expo-go'>('instant-web');
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setCurrentUrl(window.location.href);
+    if (typeof window !== 'undefined' && window.location?.href && !window.location.href.startsWith('about:')) {
+      // Use origin or full URL if valid
+      const resolved = window.location.origin || window.location.href;
+      if (resolved && resolved.startsWith('http')) {
+        setCurrentUrl(resolved);
+      }
     }
   }, []);
 
@@ -28,10 +33,10 @@ export default function MobileTestGuide({ isOpen, onClose }: MobileTestGuideProp
     }
   };
 
-  // Generate QR code URL using standard public QR API
-  const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(
-    currentUrl || 'https://ai.studio'
-  )}&bgcolor=1E1E1E&color=3B82F6&margin=8`;
+  // High-contrast, sharp QR code with pure black on pure white for instant phone camera scanning
+  const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+    currentUrl
+  )}&bgcolor=FFFFFF&color=000000&margin=12&qzone=2`;
 
   if (!isOpen) return null;
 
@@ -91,40 +96,59 @@ export default function MobileTestGuide({ isOpen, onClose }: MobileTestGuideProp
         {/* Tab 1: Instant Web Mobile Test */}
         {activeSubTab === 'instant-web' && (
           <div className="space-y-4">
-            <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex flex-col sm:flex-row items-center gap-5">
-              {/* QR Code Container */}
-              <div className="w-[140px] h-[140px] rounded-2xl overflow-hidden bg-[#1E1E1E] border border-blue-500/40 p-2 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/10">
+            <div className="p-5 rounded-2xl bg-gradient-to-b from-[#1E2330] to-[#151821] border border-blue-500/30 flex flex-col sm:flex-row items-center gap-6 shadow-xl">
+              {/* QR Code Container - Crisp White Quiet Zone for Rapid Phone Camera Recognition */}
+              <div className="w-[170px] h-[170px] rounded-2xl overflow-hidden bg-white p-2.5 flex items-center justify-center shrink-0 shadow-2xl ring-4 ring-white/10">
                 <img
                   src={qrApiUrl}
-                  alt="Scan to open on mobile"
-                  className="w-full h-full object-contain rounded-xl"
+                  alt="Scan QR code to test on mobile"
+                  className="w-full h-full object-contain"
                 />
               </div>
 
               {/* Instructions */}
-              <div className="flex-1 text-center sm:text-left space-y-2">
+              <div className="flex-1 text-center sm:text-left space-y-2.5">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-bold">
-                  <ShieldCheck className="w-3 h-3" />
-                  Instant Live Testing
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  Point & Scan with Camera
                 </div>
-                <h3 className="text-sm font-bold text-white">Scan with Camera (iPhone / Android)</h3>
-                <p className="text-xs text-white/60 leading-relaxed">
-                  Open your phone camera, scan this QR code to load the app directly on your mobile browser. Supports native clipboard sharing, photo QR uploads, and haptics!
+                <h3 className="text-base font-extrabold text-white">Scan with iPhone / Android Camera</h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Open your default camera app, point it at this QR code, and tap the yellow link banner to launch the live app directly in Safari or Chrome on your phone.
                 </p>
+                <div className="pt-1 flex flex-wrap items-center gap-2 justify-center sm:justify-start">
+                  <a
+                    href={currentUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md transition active:scale-95"
+                  >
+                    <span>Open in New Tab</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                  <button
+                    type="button"
+                    onClick={copyUrl}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-semibold border border-white/10 transition active:scale-95"
+                  >
+                    {copiedUrl ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                    <span>{copiedUrl ? 'Copied!' : 'Copy URL'}</span>
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Direct URL Box */}
             <div>
-              <label className="text-[11px] font-semibold text-white/50 block mb-1.5">
-                Or copy your live URL to open on mobile:
+              <label className="text-[11px] font-semibold text-slate-400 block mb-1.5">
+                Live URL:
               </label>
               <div className="flex items-center gap-2">
                 <input
                   type="text"
                   readOnly
                   value={currentUrl}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-blue-300 font-mono select-all outline-none"
+                  className="flex-1 bg-[#141822] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-blue-300 font-mono select-all outline-none"
                 />
                 <button
                   onClick={copyUrl}
