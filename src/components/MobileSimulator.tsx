@@ -479,6 +479,22 @@ export default function MobileSimulator() {
     showToast(`Restored split: ${item.formattedShare} per person`);
   };
 
+  // Delete individual history item manually
+  const handleDeleteHistoryItem = (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    triggerHaptics();
+    setHistory((prev) => {
+      const updated = prev.filter((item) => item.id !== id);
+      try {
+        localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updated));
+      } catch (err) {
+        console.warn('Error deleting history item', err);
+      }
+      return updated;
+    });
+    showToast('Split removed from history');
+  };
+
   // Clear history
   const handleClearHistory = () => {
     triggerHaptics();
@@ -1366,10 +1382,20 @@ export default function MobileSimulator() {
                         • {item.dateStr}
                       </span>
                     </div>
-                    <span className="text-[10px] font-medium text-blue-400 group-hover:text-blue-300 flex items-center gap-0.5 flex-shrink-0 bg-blue-950/40 border border-blue-900/50 px-1.5 py-0.5 rounded-md">
-                      <span>Load</span>
-                      <ArrowUpRight className="w-2.5 h-2.5" />
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <span className="text-[10px] font-semibold text-blue-400 group-hover:text-blue-300 flex items-center gap-0.5 bg-blue-950/40 border border-blue-900/50 px-1.5 py-0.5 rounded-md transition">
+                        <span>Load</span>
+                        <ArrowUpRight className="w-2.5 h-2.5" />
+                      </span>
+                      <button
+                        type="button"
+                        title="Delete this history item"
+                        onClick={(e) => handleDeleteHistoryItem(item.id, e)}
+                        className="p-1 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors border border-transparent hover:border-red-500/20 active:scale-90"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex items-end justify-between pt-1.5 border-t border-white/5">

@@ -413,6 +413,23 @@ export default function App() {
     }
   };
 
+  // Delete individual history item manually
+  const handleDeleteHistoryItem = async (id, e) => {
+    try {
+      e?.stopPropagation?.();
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setHistory((prev) => {
+        const updated = prev.filter((item) => item.id !== id);
+        AsyncStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updated)).catch((err) =>
+          console.error('Error updating history in AsyncStorage:', err)
+        );
+        return updated;
+      });
+    } catch (error) {
+      console.error('Error deleting history item:', error);
+    }
+  };
+
   // Clear history
   const handleClearHistory = async () => {
     try {
@@ -883,8 +900,18 @@ export default function App() {
                         </Text>
                         <Text style={styles.historyTime}>{item.dateStr}</Text>
                       </View>
-                      <View style={styles.historyActionBadge}>
-                        <Text style={styles.historyActionBadgeText}>Load ↗</Text>
+                      <View style={styles.historyCardActions}>
+                        <View style={styles.historyActionBadge}>
+                          <Text style={styles.historyActionBadgeText}>Load ↗</Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.historyDeleteButton}
+                          activeOpacity={0.7}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          onPress={(e) => handleDeleteHistoryItem(item.id, e)}
+                        >
+                          <Text style={styles.historyDeleteButtonText}>✕</Text>
+                        </TouchableOpacity>
                       </View>
                     </View>
 
@@ -1491,6 +1518,11 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontSize: 11,
   },
+  historyCardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   historyActionBadge: {
     backgroundColor: '#1E293B',
     paddingHorizontal: 7,
@@ -1503,6 +1535,19 @@ const styles = StyleSheet.create({
     color: '#60A5FA',
     fontSize: 10,
     fontWeight: '600',
+  },
+  historyDeleteButton: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.25)',
+  },
+  historyDeleteButtonText: {
+    color: '#F87171',
+    fontSize: 10,
+    fontWeight: '700',
   },
   historyCardBottom: {
     flexDirection: 'row',
