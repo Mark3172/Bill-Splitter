@@ -45,32 +45,20 @@ npm run preview   # Preview the production build
 
 ## Run with React Native / Expo
 
-1. Create a blank Expo project:
+The repository now includes a ready-to-run Expo project under `mobile/`.
 
-   ```bash
-   npx create-expo-app BillSplitter --template blank
-   cd BillSplitter
-   ```
-
-2. Install the native dependencies:
-
-   ```bash
-   npx expo install expo-clipboard expo-haptics @react-native-async-storage/async-storage expo-image-picker expo-sharing
-   ```
-
-3. Replace the generated `App.js` with the source exported from `src/expoCode.ts`. You can also copy or download it from the web app's **App.js Code** view.
-
-4. Start Expo:
-
-   ```bash
-   npx expo start --tunnel
-   ```
+```bash
+cd mobile
+npm install
+npx expo start --tunnel
+```
 
 Scan the terminal QR code with the iOS Camera app or Expo Go on Android.
 
 ### Android over USB
 
 ```bash
+cd mobile
 adb reverse tcp:8081 tcp:8081
 npx expo start --localhost
 ```
@@ -79,35 +67,30 @@ Press `a` in the Expo terminal to launch the connected device.
 
 ## Build an Android APK
 
-Install and configure EAS:
+The `mobile/eas.json` file already contains:
+
+- `preview`: installable Android APK
+- `production`: Google Play Android App Bundle (`.aab`)
+
+Install EAS CLI and sign in:
 
 ```bash
-npm install -g eas-cli
+npm install --global eas-cli
 eas login
-eas build:configure
 ```
 
-Configure an APK preview profile in `eas.json`:
-
-```json
-{
-  "cli": {
-    "version": ">= 12.0.0"
-  },
-  "build": {
-    "preview": {
-      "android": {
-        "buildType": "apk"
-      }
-    }
-  }
-}
-```
-
-Start the build:
+Create a downloadable APK:
 
 ```bash
-eas build -p android --profile preview
+cd mobile
+npm run build:apk
+```
+
+Create a Google Play bundle:
+
+```bash
+cd mobile
+npm run build:android
 ```
 
 ## Persistence
@@ -121,6 +104,12 @@ eas build -p android --profile preview
 ```text
 ├── index.html
 ├── package.json
+├── mobile/
+│   ├── App.js
+│   ├── app.json
+│   ├── eas.json
+│   ├── index.js
+│   └── package.json
 ├── src/
 │   ├── App.tsx
 │   ├── components/

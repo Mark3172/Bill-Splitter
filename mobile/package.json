@@ -1,0 +1,26 @@
+{
+  "name": "bill-splitter-mobile",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "expo": "~57.0.19",
+    "expo-clipboard": "~57.0.1",
+    "expo-haptics": "~57.0.2",
+    "expo-image-picker": "~57.0.15",
+    "expo-sharing": "~57.0.17",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.3"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "eas:configure": "eas build:configure",
+    "build:apk": "eas build --platform android --profile preview",
+    "build:android": "eas build --platform android --profile production"
+  },
+  "private": true
+}
