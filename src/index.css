@@ -1,1 +1,174 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* Fintech charcoal + soft teal (modern banking / split-app feel) */
+  --bs-bg-deep: #07090d;
+  --bs-bg: #0c0f14;
+  --bs-surface: #12161e;
+  --bs-surface-raised: #171c26;
+  --bs-surface-hover: #1c2230;
+  --bs-border: rgba(255, 255, 255, 0.08);
+  --bs-border-strong: rgba(255, 255, 255, 0.14);
+  --bs-text: #f2f4f8;
+  --bs-text-muted: #8b93a7;
+  --bs-text-dim: #5c6578;
+  --bs-accent: #1ec8a5;
+  --bs-accent-soft: rgba(30, 200, 165, 0.14);
+  --bs-accent-border: rgba(30, 200, 165, 0.35);
+  --bs-accent-glow: rgba(30, 200, 165, 0.28);
+  --bs-danger: #f07178;
+  --bs-success: #34d399;
+  --bs-radius-lg: 1.25rem;
+  --bs-radius-md: 0.875rem;
+  --bs-font: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  --bs-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+html, body, #root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--bs-font);
+  background: var(--bs-bg-deep);
+  color: var(--bs-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background: rgba(30, 200, 165, 0.35);
+  color: #fff;
+}
+
+/* Soft ambient mesh for the web shell */
+.bs-shell-bg {
+  background:
+    radial-gradient(ellipse 80% 55% at 12% -10%, rgba(30, 200, 165, 0.12), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 90% 10%, rgba(56, 120, 220, 0.08), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(20, 40, 60, 0.5), transparent 60%),
+    linear-gradient(180deg, #0a0d12 0%, #07090d 100%);
+}
+
+.bs-glass {
+  background: rgba(12, 15, 20, 0.72);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+}
+
+.bs-phone-frame {
+  background: linear-gradient(165deg, #141820 0%, #0e1218 100%);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 28px 80px -20px rgba(0, 0, 0, 0.85),
+    0 0 60px -30px rgba(30, 200, 165, 0.25);
+}
+
+.bs-device-chrome {
+  background: #0e1218;
+}
+
+/* Typography helpers */
+.bs-display {
+  font-family: var(--bs-font);
+  letter-spacing: -0.03em;
+}
+
+.bs-mono {
+  font-family: var(--bs-mono);
+}
+
+/* Intentional motion */
+@keyframes bs-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bs-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes bs-slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes bs-pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+@keyframes bs-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.bs-animate-in {
+  animation: bs-fade-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.bs-animate-fade {
+  animation: bs-fade-in 0.25s ease both;
+}
+
+.bs-animate-drawer {
+  animation: bs-slide-right 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.bs-stagger > *:nth-child(1) { animation-delay: 0.02s; }
+.bs-stagger > *:nth-child(2) { animation-delay: 0.06s; }
+.bs-stagger > *:nth-child(3) { animation-delay: 0.1s; }
+.bs-stagger > *:nth-child(4) { animation-delay: 0.14s; }
+.bs-stagger > *:nth-child(5) { animation-delay: 0.18s; }
+
+.bs-stagger > * {
+  animation: bs-fade-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Scrollbars inside phone */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+
+/* Press feedback without changing behavior */
+.bs-press:active {
+  transform: scale(0.98);
+}
+
+.bs-nav-pill {
+  transition: color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.bs-accent-ring:focus-within {
+  border-color: var(--bs-accent) !important;
+  box-shadow: 0 0 0 3px var(--bs-accent-soft);
+}

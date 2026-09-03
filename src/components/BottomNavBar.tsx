@@ -22,21 +22,20 @@ export default function BottomNavBar({
   };
 
   return (
-    <div className="bg-[#12151D] border-t border-[#232838] px-3 pt-1.5 pb-1 flex items-center justify-around select-none shrink-0 z-20">
-      {/* Split Tab */}
+    <div className="bg-[#0c1016] border-t border-[var(--bs-border)] px-3 pt-1.5 pb-1 flex items-center justify-around select-none shrink-0 z-20">
       <button
         id="nav-tab-split"
         type="button"
         onClick={() => handleTabClick('split')}
         className={`flex-1 py-1 flex flex-col items-center gap-0.5 transition ${
           activeNavTab === 'split'
-            ? 'text-blue-400 font-bold'
-            : 'text-slate-400 hover:text-slate-200 font-medium'
+            ? 'text-[var(--bs-accent)] font-bold'
+            : 'text-[var(--bs-text-muted)] hover:text-slate-200 font-medium'
         }`}
       >
         <div
-          className={`p-1 rounded-xl transition ${
-            activeNavTab === 'split' ? 'bg-blue-500/15 ring-1 ring-blue-500/30' : ''
+          className={`p-1.5 rounded-xl transition ${
+            activeNavTab === 'split' ? 'bg-[var(--bs-accent-soft)] ring-1 ring-[var(--bs-accent-border)]' : ''
           }`}
         >
           <Receipt className="w-4 h-4" />
@@ -44,20 +43,19 @@ export default function BottomNavBar({
         <span className="text-[10px] tracking-tight">Split</span>
       </button>
 
-      {/* Pay & QR Tab */}
       <button
         id="nav-tab-payment"
         type="button"
         onClick={() => handleTabClick('payment')}
         className={`flex-1 py-1 flex flex-col items-center gap-0.5 transition ${
           activeNavTab === 'payment'
-            ? 'text-blue-400 font-bold'
-            : 'text-slate-400 hover:text-slate-200 font-medium'
+            ? 'text-[var(--bs-accent)] font-bold'
+            : 'text-[var(--bs-text-muted)] hover:text-slate-200 font-medium'
         }`}
       >
         <div
-          className={`p-1 rounded-xl transition ${
-            activeNavTab === 'payment' ? 'bg-blue-500/15 ring-1 ring-blue-500/30' : ''
+          className={`p-1.5 rounded-xl transition ${
+            activeNavTab === 'payment' ? 'bg-[var(--bs-accent-soft)] ring-1 ring-[var(--bs-accent-border)]' : ''
           }`}
         >
           <QrCode className="w-4 h-4" />
@@ -65,27 +63,26 @@ export default function BottomNavBar({
         <span className="text-[10px] tracking-tight">Pay & QR</span>
       </button>
 
-      {/* History Tab */}
       <button
         id="nav-tab-history"
         type="button"
         onClick={() => handleTabClick('history')}
         className={`flex-1 py-1 flex flex-col items-center gap-0.5 relative transition ${
           activeNavTab === 'history'
-            ? 'text-blue-400 font-bold'
-            : 'text-slate-400 hover:text-slate-200 font-medium'
+            ? 'text-[var(--bs-accent)] font-bold'
+            : 'text-[var(--bs-text-muted)] hover:text-slate-200 font-medium'
         }`}
       >
         <div
-          className={`p-1 rounded-xl transition ${
-            activeNavTab === 'history' ? 'bg-blue-500/15 ring-1 ring-blue-500/30' : ''
+          className={`p-1.5 rounded-xl transition ${
+            activeNavTab === 'history' ? 'bg-[var(--bs-accent-soft)] ring-1 ring-[var(--bs-accent-border)]' : ''
           }`}
         >
           <Clock className="w-4 h-4" />
         </div>
         <span className="text-[10px] tracking-tight">History</span>
         {historyCount > 0 && (
-          <span className="absolute top-0.5 right-6 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-mono font-bold flex items-center justify-center shadow-sm">
+          <span className="absolute top-0.5 right-6 w-4 h-4 rounded-full bg-[var(--bs-accent)] text-[#04140f] text-[9px] font-mono font-bold flex items-center justify-center shadow-sm">
             {historyCount}
           </span>
         )}

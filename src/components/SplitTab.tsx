@@ -90,46 +90,48 @@ export default function SplitTab({
   onOpenSideDrawer,
 }: SplitTabProps) {
   return (
-    <div className="space-y-3.5 animate-in fade-in duration-150">
-      {/* Event Name Pill (Clean & unobtrusive) */}
-      <div className="flex items-center gap-2 bg-[#161922] border border-[#262C3D] rounded-xl px-3 py-2 focus-within:border-blue-500 transition">
-        <span className="text-xs">🍽️</span>
+    <div className="space-y-3.5 bs-stagger">
+      {/* Event Name */}
+      <div className="flex items-center gap-2 bg-[var(--bs-surface)] border border-[var(--bs-border)] rounded-2xl px-3.5 py-2.5 bs-accent-ring transition">
+        <span className="text-xs opacity-80">🍽️</span>
         <input
           id="input-event-name"
           type="text"
           placeholder="Event / Location Name (e.g. Hotpot Dinner)"
           value={eventName}
           onChange={(e) => setEventName(e.target.value)}
-          className="bg-transparent text-xs text-white placeholder:text-slate-500 outline-none w-full font-medium"
+          className="bg-transparent text-xs text-white placeholder:text-[var(--bs-text-dim)] outline-none w-full font-medium"
         />
         {eventName && (
           <button
             type="button"
             onClick={() => setEventName('')}
-            className="text-slate-500 hover:text-slate-300 text-xs px-1"
+            className="text-[var(--bs-text-dim)] hover:text-slate-300 text-xs px-1"
           >
             ✕
           </button>
         )}
       </div>
 
-      {/* The Hero Per-Person Receipt Card */}
-      <div className="bg-[#171A21] border border-[#2B3140] rounded-2xl p-4 shadow-2xl relative overflow-hidden">
-        {/* Ambient Radial Glow */}
+      {/* Hero Per-Person Receipt */}
+      <div className="bg-[var(--bs-surface-raised)] border border-[var(--bs-border)] rounded-2xl p-4 relative overflow-hidden">
         <div
-          className="absolute -top-10 -right-10 w-36 h-36 rounded-full blur-3xl opacity-20 pointer-events-none"
+          className="absolute -top-12 -right-10 w-40 h-40 rounded-full blur-3xl opacity-25 pointer-events-none"
           style={{ backgroundColor: currentConfig.color }}
         />
+        <div
+          className="absolute inset-x-0 top-0 h-px opacity-60"
+          style={{ background: `linear-gradient(90deg, transparent, ${currentConfig.color}, transparent)` }}
+        />
 
-        {/* Top Receipt Badge */}
         <div className="flex items-center justify-between mb-3 relative z-10">
-          <div className="flex items-center gap-2 bg-[#1F232E] px-2.5 py-1 rounded-full border border-white/5">
+          <div className="flex items-center gap-2 bg-black/25 px-2.5 py-1 rounded-lg border border-white/5">
             <span
               className="w-2 h-2 rounded-full shadow-sm"
               style={{ backgroundColor: currentConfig.color }}
             />
-            <span className="text-[10px] font-bold tracking-wider text-slate-200 uppercase">
-              {selectedMethod} RECEIPT • {selectedCurrency}
+            <span className="text-[10px] font-bold tracking-[0.08em] text-slate-200 uppercase">
+              {selectedMethod} · {selectedCurrency}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -137,24 +139,23 @@ export default function SplitTab({
               type="button"
               onClick={handleOpenReceiptModal}
               disabled={!calculation.isValid}
-              className="text-[10px] text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 px-2 py-0.5 rounded-full transition active:scale-95 disabled:opacity-50"
+              className="text-[10px] text-[var(--bs-accent)] hover:text-[#4adebf] font-bold flex items-center gap-1 bg-[var(--bs-accent-soft)] hover:bg-[rgba(30,200,165,0.22)] border border-[var(--bs-accent-border)] px-2 py-0.5 rounded-md transition bs-press disabled:opacity-50"
               title="Preview Receipt Image & QR"
             >
               <Eye className="w-3 h-3" />
-              <span>Preview Card</span>
+              <span>Preview</span>
             </button>
-            <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded">
+            <span className="text-[10px] font-bold text-amber-300/90 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-md">
               {currentCurrencyConfig.symbol}
             </span>
           </div>
         </div>
 
-        {/* Receipt Line Items */}
         <div className="space-y-2 relative z-10 text-xs">
           {eventName.trim().length > 0 && (
             <div className="flex justify-between items-center text-slate-300">
-              <span className="text-slate-400 flex items-center gap-1">
-                <span>🍽️</span> Event:
+              <span className="text-[var(--bs-text-muted)] flex items-center gap-1">
+                <span>🍽️</span> Event
               </span>
               <span className="font-semibold text-white truncate max-w-[170px]">
                 {eventName.trim()}
@@ -163,36 +164,35 @@ export default function SplitTab({
           )}
 
           <div className="flex justify-between items-center text-slate-300">
-            <span className="text-slate-400 flex items-center gap-1">
-              <span>💰</span> Total Bill:
+            <span className="text-[var(--bs-text-muted)] flex items-center gap-1">
+              <span>💰</span> Total Bill
             </span>
-            <span className="font-mono font-bold text-white">
+            <span className="bs-mono font-bold text-white">
               {calculation.formattedTotal}
             </span>
           </div>
 
-          {/* PER PERSON HIGHLIGHT CONTAINER (Polite Group Sharing) */}
           <div
-            className="p-3 rounded-xl flex items-center justify-between border transition-all mt-1"
+            className="p-3.5 rounded-xl flex items-center justify-between border transition-all mt-1"
             style={{
-              backgroundColor: `${currentConfig.color}15`,
-              borderColor: `${currentConfig.borderColor}50`,
+              backgroundColor: `${currentConfig.color}14`,
+              borderColor: `${currentConfig.borderColor}45`,
             }}
           >
             <div>
               <span
-                className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"
+                className="text-[10px] font-bold uppercase tracking-[0.08em] flex items-center gap-1"
                 style={{ color: currentConfig.color }}
               >
                 <Users className="w-3 h-3" />
-                Per Person ({calculation.peopleCount} {calculation.peopleCount > 1 ? 'people' : 'person'}):
+                Per Person ({calculation.peopleCount} {calculation.peopleCount > 1 ? 'people' : 'person'})
               </span>
-              <div className="text-xl font-black font-mono tracking-tight text-white mt-0.5">
+              <div className="text-2xl font-extrabold bs-mono tracking-tight text-white mt-0.5 bs-display">
                 {calculation.formattedShare}
               </div>
             </div>
             <span
-              className="text-[10px] font-extrabold px-2 py-0.5 rounded-full border shadow-sm"
+              className="text-[10px] font-extrabold px-2 py-1 rounded-md border shadow-sm"
               style={{
                 backgroundColor: currentConfig.color,
                 borderColor: currentConfig.borderColor,
@@ -203,20 +203,19 @@ export default function SplitTab({
             </span>
           </div>
 
-          {/* Payment Details Snippet on Receipt */}
           {activeAccount.trim().length > 0 && (
             <div className="pt-2 border-t border-dashed border-white/10 flex items-center justify-between text-[11px]">
-              <span className="text-slate-400 flex items-center gap-1">
-                <span>📱</span> {selectedMethod}:
+              <span className="text-[var(--bs-text-muted)] flex items-center gap-1">
+                <span>📱</span> {selectedMethod}
               </span>
               <div className="flex items-center gap-1.5">
-                <span className="font-mono font-semibold text-slate-200">
+                <span className="bs-mono font-semibold text-slate-200">
                   {activeAccount}
                 </span>
                 <button
                   type="button"
                   onClick={handleCopyAccountOnly}
-                  className="p-1 hover:bg-white/10 rounded transition text-slate-400 hover:text-white"
+                  className="p-1 hover:bg-white/10 rounded-md transition text-[var(--bs-text-muted)] hover:text-white"
                   title="Copy Account Number"
                 >
                   <Copy className="w-3 h-3" />
@@ -225,12 +224,10 @@ export default function SplitTab({
             </div>
           )}
 
-          {/* Embedded Scannable QR Code on Receipt */}
           {activeQR && (
             <div className="pt-2.5 border-t border-dashed border-white/10 mt-1">
-              <div className="bg-[#10131B] border border-white/10 rounded-xl p-2.5 flex items-center justify-between gap-2.5">
+              <div className="bg-black/30 border border-white/10 rounded-xl p-2.5 flex items-center justify-between gap-2.5">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  {/* High contrast white box for optimal scanning */}
                   <div className="w-12 h-12 bg-white rounded-lg p-1 shrink-0 flex items-center justify-center shadow-md">
                     <img
                       src={activeQR}
@@ -240,8 +237,8 @@ export default function SplitTab({
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-1">
-                      <span className="text-[10px] font-bold text-emerald-400">✓ SCANNABLE QR</span>
-                      <span className="text-[9px] text-slate-500">• {selectedMethod}</span>
+                      <span className="text-[10px] font-bold text-[var(--bs-accent)]">✓ SCANNABLE QR</span>
+                      <span className="text-[9px] text-[var(--bs-text-dim)]">· {selectedMethod}</span>
                     </div>
                     <p className="text-[11px] font-medium text-slate-300 truncate">
                       Friends can scan or pay
@@ -253,24 +250,24 @@ export default function SplitTab({
                   <button
                     type="button"
                     onClick={handleCopyQrImageOnly}
-                    className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition ${
+                    className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition bs-press ${
                       isQrCopied
                         ? 'bg-emerald-600 text-white shadow'
-                        : 'bg-[#1E2330] hover:bg-[#272D3E] text-slate-200 border border-white/10'
+                        : 'bg-[var(--bs-surface)] hover:bg-[var(--bs-surface-hover)] text-slate-200 border border-[var(--bs-border)]'
                     }`}
                     title="Copy QR Code Image to Clipboard"
                   >
                     {isQrCopied ? (
                       <Check className="w-3 h-3 text-white" />
                     ) : (
-                      <Copy className="w-3 h-3 text-blue-400" />
+                      <Copy className="w-3 h-3 text-[var(--bs-accent)]" />
                     )}
                     <span>{isQrCopied ? 'Copied' : 'Copy QR'}</span>
                   </button>
                   <button
                     type="button"
                     onClick={handleDownloadReceipt}
-                    className="p-1.5 bg-[#1E2330] hover:bg-[#272D3E] text-slate-300 rounded-lg border border-white/10 transition"
+                    className="p-1.5 bg-[var(--bs-surface)] hover:bg-[var(--bs-surface-hover)] text-slate-300 rounded-lg border border-[var(--bs-border)] transition"
                     title="Download Receipt Image with QR"
                   >
                     <Download className="w-3 h-3" />
@@ -281,27 +278,25 @@ export default function SplitTab({
           )}
         </div>
 
-        {/* Notched Receipt Cutouts */}
-        <div className="absolute -left-2.5 bottom-12 w-5 h-5 rounded-full bg-[#101216] border-r border-[#2B3140]" />
-        <div className="absolute -right-2.5 bottom-12 w-5 h-5 rounded-full bg-[#101216] border-l border-[#2B3140]" />
+        <div className="absolute -left-2.5 bottom-12 w-5 h-5 rounded-full bg-[#0e1218] border-r border-[var(--bs-border)]" />
+        <div className="absolute -right-2.5 bottom-12 w-5 h-5 rounded-full bg-[#0e1218] border-l border-[var(--bs-border)]" />
       </div>
 
-      {/* Amount & People Numeric Controls */}
-      <div className="bg-[#151821] border border-[#282E3E] rounded-2xl p-3.5 space-y-3 shadow-lg">
+      {/* Amount & People Controls */}
+      <div className="bg-[var(--bs-surface)] border border-[var(--bs-border)] rounded-2xl p-3.5 space-y-3">
         <div className="grid grid-cols-12 gap-3">
-          {/* Total Bill Input */}
           <div className="col-span-7">
             <div className="flex items-center justify-between mb-1">
               <label className="text-xs font-semibold text-slate-300 block">
                 Total Bill
               </label>
-              <span className="text-[10px] text-slate-400 font-mono font-semibold">
+              <span className="text-[10px] text-[var(--bs-text-muted)] bs-mono font-semibold">
                 {currentCurrencyConfig.symbol}
               </span>
             </div>
             <div className="relative flex items-center">
               {currentCurrencyConfig.placement === 'prefix' && (
-                <span className="absolute left-3.5 font-mono font-bold text-blue-400 text-sm pointer-events-none select-none">
+                <span className="absolute left-3.5 bs-mono font-bold text-[var(--bs-accent)] text-sm pointer-events-none select-none">
                   {currentCurrencyConfig.symbol}
                 </span>
               )}
@@ -312,20 +307,19 @@ export default function SplitTab({
                 placeholder={currentCurrencyConfig.sampleAmount}
                 value={totalBill}
                 onChange={(e) => setTotalBill(e.target.value)}
-                className={`w-full bg-[#1A1D24] border border-[#2B3140] focus:border-blue-500 rounded-xl py-2 text-sm font-mono font-semibold text-white placeholder:text-slate-500 outline-none transition ${
+                className={`w-full bg-[var(--bs-surface-raised)] border border-[var(--bs-border)] focus:border-[var(--bs-accent)] rounded-xl py-2 text-sm bs-mono font-semibold text-white placeholder:text-[var(--bs-text-dim)] outline-none transition ${
                   currentCurrencyConfig.placement === 'prefix' ? 'pl-8 pr-3.5' : 'pl-3.5 pr-12'
                 }`}
               />
               {currentCurrencyConfig.placement === 'suffix' && (
-                <span className="absolute right-3 font-mono font-bold text-blue-400 text-xs pointer-events-none select-none bg-[#242938] px-1.5 py-0.5 rounded border border-white/10">
+                <span className="absolute right-3 bs-mono font-bold text-[var(--bs-accent)] text-xs pointer-events-none select-none bg-black/30 px-1.5 py-0.5 rounded border border-white/10">
                   {currentCurrencyConfig.symbol}
                 </span>
               )}
             </div>
 
-            {/* Quick Increment Chips */}
             <div className="flex items-center gap-1 mt-1.5">
-              <span className="text-[9px] text-slate-500 font-medium uppercase">Add:</span>
+              <span className="text-[9px] text-[var(--bs-text-dim)] font-medium uppercase">Add</span>
               {(['MMK', 'THB'].includes(selectedCurrency)
                 ? [5000, 10000, 50000]
                 : [5, 10, 25]
@@ -334,7 +328,7 @@ export default function SplitTab({
                   key={inc}
                   type="button"
                   onClick={() => handleAddAmount(inc)}
-                  className="px-1.5 py-0.5 bg-[#202532] hover:bg-[#282F3F] border border-white/5 rounded text-[10px] font-mono font-bold text-slate-300 transition active:scale-95"
+                  className="px-1.5 py-0.5 bg-[var(--bs-surface-raised)] hover:bg-[var(--bs-surface-hover)] border border-[var(--bs-border)] rounded-md text-[10px] bs-mono font-bold text-slate-300 transition bs-press"
                 >
                   +{formatNumber(inc)}
                 </button>
@@ -342,7 +336,6 @@ export default function SplitTab({
             </div>
           </div>
 
-          {/* People Stepper */}
           <div className="col-span-5">
             <label className="text-xs font-semibold text-slate-300 mb-1 block">
               People
@@ -355,7 +348,7 @@ export default function SplitTab({
                   const current = parseInt(numberOfPeople, 10) || 1;
                   if (current > 1) setNumberOfPeople(String(current - 1));
                 }}
-                className="w-8 h-9 bg-[#1A1D24] border border-[#2B3140] hover:bg-[#232732] rounded-lg text-slate-300 text-base font-bold flex items-center justify-center transition active:scale-95"
+                className="w-8 h-9 bg-[var(--bs-surface-raised)] border border-[var(--bs-border)] hover:bg-[var(--bs-surface-hover)] rounded-lg text-slate-300 text-base font-bold flex items-center justify-center transition bs-press"
               >
                 -
               </button>
@@ -366,7 +359,7 @@ export default function SplitTab({
                 placeholder="2"
                 value={numberOfPeople}
                 onChange={(e) => setNumberOfPeople(e.target.value)}
-                className="w-full bg-[#1A1D24] border border-[#2B3140] focus:border-blue-500 rounded-xl py-1.5 text-center text-sm font-mono font-semibold text-white placeholder:text-slate-500 outline-none transition"
+                className="w-full bg-[var(--bs-surface-raised)] border border-[var(--bs-border)] focus:border-[var(--bs-accent)] rounded-xl py-1.5 text-center text-sm bs-mono font-semibold text-white placeholder:text-[var(--bs-text-dim)] outline-none transition"
               />
               <button
                 type="button"
@@ -375,13 +368,12 @@ export default function SplitTab({
                   const current = parseInt(numberOfPeople, 10) || 0;
                   setNumberOfPeople(String(current + 1));
                 }}
-                className="w-8 h-9 bg-[#1A1D24] border border-[#2B3140] hover:bg-[#232732] rounded-lg text-slate-300 text-base font-bold flex items-center justify-center transition active:scale-95"
+                className="w-8 h-9 bg-[var(--bs-surface-raised)] border border-[var(--bs-border)] hover:bg-[var(--bs-surface-hover)] rounded-lg text-slate-300 text-base font-bold flex items-center justify-center transition bs-press"
               >
                 +
               </button>
             </div>
 
-            {/* Quick People Count Pills */}
             <div className="flex items-center justify-between gap-1 mt-1.5">
               {['2', '3', '4', '5'].map((num) => (
                 <button
@@ -391,10 +383,10 @@ export default function SplitTab({
                     triggerHaptics();
                     setNumberOfPeople(num);
                   }}
-                  className={`flex-1 py-0.5 rounded text-[10px] font-mono font-bold transition active:scale-95 ${
+                  className={`flex-1 py-0.5 rounded-md text-[10px] bs-mono font-bold transition bs-press ${
                     numberOfPeople === num
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-[#202532] text-slate-400 hover:text-slate-200 border border-white/5'
+                      ? 'bg-[var(--bs-accent)] text-[#04140f]'
+                      : 'bg-[var(--bs-surface-raised)] text-[var(--bs-text-muted)] hover:text-slate-200 border border-[var(--bs-border)]'
                   }`}
                 >
                   {num}p
@@ -404,10 +396,9 @@ export default function SplitTab({
           </div>
         </div>
 
-        {/* Active Payment Snippet Button (Direct link to Pay & QR tab) */}
         <div
           onClick={onOpenPaymentTab}
-          className="bg-[#1A1E29] hover:bg-[#202533] border border-white/5 hover:border-white/10 p-2.5 rounded-xl flex items-center justify-between cursor-pointer transition active:scale-[0.99] mt-2"
+          className="bg-[var(--bs-surface-raised)] hover:bg-[var(--bs-surface-hover)] border border-[var(--bs-border)] hover:border-[var(--bs-border-strong)] p-2.5 rounded-xl flex items-center justify-between cursor-pointer transition bs-press mt-2"
         >
           <div className="flex items-center gap-2 min-w-0">
             <div
@@ -417,13 +408,13 @@ export default function SplitTab({
               <Wallet className="w-3.5 h-3.5" />
             </div>
             <div className="truncate">
-              <span className="text-[10px] text-slate-400 block leading-tight">Paying to</span>
+              <span className="text-[10px] text-[var(--bs-text-muted)] block leading-tight">Paying to</span>
               <span className="text-xs font-bold text-slate-200 truncate block">
                 {selectedMethod} {activeAccount ? `(${activeAccount})` : ''}
               </span>
             </div>
           </div>
-          <span className="text-[10px] text-blue-400 font-semibold flex items-center gap-0.5 shrink-0 pl-1">
+          <span className="text-[10px] text-[var(--bs-accent)] font-semibold flex items-center gap-0.5 shrink-0 pl-1">
             <span>Change & QR</span>
             <ChevronRight className="w-3 h-3" />
           </span>
@@ -432,22 +423,21 @@ export default function SplitTab({
 
       {/* Action Buttons */}
       <div className="space-y-2 pt-1">
-        {/* Primary: Share Bill & QR */}
         <button
           id="btn-share-bill-qr"
           type="button"
           disabled={!calculation.isValid || isSharing}
           onClick={handleShare}
-          className={`w-full font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-xl transition-all ${
+          className={`w-full font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-all bs-press ${
             calculation.isValid
-              ? 'text-white active:scale-[0.98]'
-              : 'bg-[#1A1D24] text-slate-600 border border-[#2B3140] cursor-not-allowed opacity-60'
+              ? 'text-white'
+              : 'bg-[var(--bs-surface)] text-[var(--bs-text-dim)] border border-[var(--bs-border)] cursor-not-allowed opacity-60'
           }`}
           style={
             calculation.isValid
               ? {
                   backgroundColor: currentConfig.color,
-                  boxShadow: `0 4px 20px ${currentConfig.color}60`,
+                  boxShadow: `0 8px 28px -8px ${currentConfig.color}90`,
                 }
               : undefined
           }
@@ -462,15 +452,14 @@ export default function SplitTab({
           </span>
         </button>
 
-        {/* Secondary: Copy Receipt Card Image (Pure PNG for chat apps) */}
         <div
           id="receipt-card-action-box"
           className={`w-full font-semibold rounded-2xl flex items-center justify-between border transition-all text-xs overflow-hidden ${
             isCardCopied
-              ? 'bg-emerald-950/70 border-emerald-500 text-emerald-300 shadow-md'
+              ? 'bg-emerald-950/70 border-emerald-500 text-emerald-300'
               : calculation.isValid
-              ? 'bg-[#181B26] border-blue-500/30 hover:border-blue-500/60 text-slate-200'
-              : 'bg-[#14161E] border-[#222735] text-slate-600'
+              ? 'bg-[var(--bs-surface)] border-[var(--bs-accent-border)] hover:border-[var(--bs-accent)] text-slate-200'
+              : 'bg-[var(--bs-surface)] border-[var(--bs-border)] text-[var(--bs-text-dim)]'
           }`}
         >
           <button
@@ -478,7 +467,7 @@ export default function SplitTab({
             type="button"
             disabled={!calculation.isValid || isCardCopied}
             onClick={handleCopyReceiptCard}
-            className="flex-1 py-2.5 pl-3.5 pr-2 flex items-center text-left transition active:scale-[0.99] disabled:cursor-not-allowed hover:bg-white/5"
+            className="flex-1 py-2.5 pl-3.5 pr-2 flex items-center text-left transition disabled:cursor-not-allowed hover:bg-white/[0.03]"
           >
             <div className="flex items-center gap-2.5">
               {isCardCopied ? (
@@ -491,17 +480,17 @@ export default function SplitTab({
                 </>
               ) : (
                 <>
-                  <ImageIcon className="w-4 h-4 text-blue-400 shrink-0" />
+                  <ImageIcon className="w-4 h-4 text-[var(--bs-accent)] shrink-0" />
                   <div className="text-left">
                     <div className="flex items-center gap-1.5">
                       <span className="font-bold text-white">
                         Copy Receipt Image {activeQR ? '+ QR Code' : ''}
                       </span>
-                      <span className="text-[9px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-500/30 px-1.5 py-0.5 rounded">
+                      <span className="text-[9px] font-extrabold bg-[var(--bs-accent-soft)] text-[var(--bs-accent)] border border-[var(--bs-accent-border)] px-1.5 py-0.5 rounded">
                         PNG Photo
                       </span>
                     </div>
-                    <span className="text-[10px] text-slate-400 block">
+                    <span className="text-[10px] text-[var(--bs-text-muted)] block">
                       Copies high-res photo to paste directly into chat
                     </span>
                   </div>
@@ -515,7 +504,7 @@ export default function SplitTab({
               type="button"
               disabled={!calculation.isValid}
               onClick={handleOpenReceiptModal}
-              className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="p-1.5 text-[var(--bs-text-muted)] hover:text-white hover:bg-white/10 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
               title="Preview Receipt Image"
             >
               <Eye className="w-3.5 h-3.5" />
@@ -523,19 +512,18 @@ export default function SplitTab({
           </div>
         </div>
 
-        {/* Tertiary: Copy Text & Download PNG Row */}
         <div className="grid grid-cols-2 gap-2">
           <button
             id="btn-copy-text-only"
             type="button"
             disabled={!calculation.isValid || isCopied}
             onClick={handleCopyTextOnly}
-            className={`font-semibold py-2 px-2.5 rounded-xl flex items-center justify-center gap-1.5 border transition-all text-xs active:scale-[0.98] ${
+            className={`font-semibold py-2 px-2.5 rounded-xl flex items-center justify-center gap-1.5 border transition-all text-xs bs-press ${
               isCopied
                 ? 'bg-emerald-950/50 border-emerald-500 text-emerald-300'
                 : calculation.isValid
-                ? 'bg-[#151821] border-[#252B3C] hover:bg-[#1C212E] text-slate-300'
-                : 'bg-[#14161E] border-[#222735] text-slate-600 cursor-not-allowed'
+                ? 'bg-[var(--bs-surface)] border-[var(--bs-border)] hover:bg-[var(--bs-surface-hover)] text-slate-300'
+                : 'bg-[var(--bs-surface)] border-[var(--bs-border)] text-[var(--bs-text-dim)] cursor-not-allowed'
             }`}
           >
             {isCopied ? (
@@ -545,7 +533,7 @@ export default function SplitTab({
               </>
             ) : (
               <>
-                <Copy className="w-3.5 h-3.5 text-slate-400" />
+                <Copy className="w-3.5 h-3.5 text-[var(--bs-text-muted)]" />
                 <span>Copy Text Only</span>
               </>
             )}
@@ -556,49 +544,47 @@ export default function SplitTab({
             type="button"
             disabled={!calculation.isValid}
             onClick={handleDownloadReceipt}
-            className={`font-semibold py-2 px-2.5 rounded-xl flex items-center justify-center gap-1.5 border transition-all text-xs active:scale-[0.98] ${
+            className={`font-semibold py-2 px-2.5 rounded-xl flex items-center justify-center gap-1.5 border transition-all text-xs bs-press ${
               calculation.isValid
-                ? 'bg-[#151821] border-[#252B3C] hover:bg-[#1C212E] text-slate-300 hover:text-white'
-                : 'bg-[#14161E] border-[#222735] text-slate-600 cursor-not-allowed'
+                ? 'bg-[var(--bs-surface)] border-[var(--bs-border)] hover:bg-[var(--bs-surface-hover)] text-slate-300 hover:text-white'
+                : 'bg-[var(--bs-surface)] border-[var(--bs-border)] text-[var(--bs-text-dim)] cursor-not-allowed'
             }`}
           >
-            <Download className="w-3.5 h-3.5 text-blue-400" />
+            <Download className="w-3.5 h-3.5 text-[var(--bs-accent)]" />
             <span>Save PNG</span>
           </button>
         </div>
 
-        {/* Quaternary: Bookmark / Save to History */}
         <button
           id="btn-save-to-history"
           type="button"
           disabled={!calculation.isValid}
           onClick={() => saveCalculationToHistory(calculation)}
-          className={`w-full font-semibold py-1.5 rounded-2xl flex items-center justify-center gap-2 border transition-all text-[11px] active:scale-[0.98] ${
+          className={`w-full font-semibold py-1.5 rounded-2xl flex items-center justify-center gap-2 border transition-all text-[11px] bs-press ${
             isSavedFeedback
-              ? 'bg-blue-950/50 border-blue-500 text-blue-300'
+              ? 'bg-[var(--bs-accent-soft)] border-[var(--bs-accent-border)] text-[var(--bs-accent)]'
               : calculation.isValid
-              ? 'bg-[#13151D] border-[#1F2432] hover:bg-[#1A1D27] text-slate-400 hover:text-slate-200'
-              : 'bg-[#12141A] border-[#1C202B] text-slate-600 cursor-not-allowed'
+              ? 'bg-transparent border-[var(--bs-border)] hover:bg-white/[0.03] text-[var(--bs-text-muted)] hover:text-slate-200'
+              : 'bg-transparent border-[var(--bs-border)] text-[var(--bs-text-dim)] cursor-not-allowed'
           }`}
         >
           {isSavedFeedback ? (
             <>
-              <BookmarkCheck className="w-3.5 h-3.5 text-blue-400" />
-              <span className="text-blue-300 font-bold">✓ Saved to History</span>
+              <BookmarkCheck className="w-3.5 h-3.5 text-[var(--bs-accent)]" />
+              <span className="font-bold">✓ Saved to History</span>
             </>
           ) : (
             <>
-              <BookmarkCheck className="w-3 h-3 text-slate-500" />
+              <BookmarkCheck className="w-3 h-3 text-[var(--bs-text-dim)]" />
               <span>Bookmark this Split</span>
             </>
           )}
         </button>
       </div>
 
-      {/* Side Tools Hint Banner */}
       <div
         onClick={onOpenSideDrawer}
-        className="p-2.5 bg-[#141721] border border-white/5 hover:border-blue-500/30 rounded-xl flex items-center justify-between cursor-pointer transition text-slate-400 hover:text-slate-200"
+        className="p-2.5 bg-[var(--bs-surface)] border border-[var(--bs-border)] hover:border-[var(--bs-accent-border)] rounded-xl flex items-center justify-between cursor-pointer transition text-[var(--bs-text-muted)] hover:text-slate-200"
       >
         <div className="flex items-center gap-2">
           <span className="text-xs">⚡</span>
@@ -606,7 +592,7 @@ export default function SplitTab({
             Need presets or switch currency ({selectedCurrency})?
           </span>
         </div>
-        <span className="text-[11px] font-bold text-blue-400 flex items-center">
+        <span className="text-[11px] font-bold text-[var(--bs-accent)] flex items-center">
           Tools &gt;
         </span>
       </div>
