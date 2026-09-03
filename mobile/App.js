@@ -441,7 +441,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#121212" />
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardContainer}
@@ -479,33 +479,16 @@ export default function App() {
 
             {/* Receipt Body: Formatted Text */}
             <View style={styles.receiptBody}>
-              {eventName.trim().length > 0 && (
-                <View style={styles.receiptRow}>
-                  <Text style={styles.receiptIcon}>🍽️</Text>
-                  <Text style={styles.receiptEventText} numberOfLines={1}>
-                    {eventName.trim()}
-                  </Text>
-                </View>
-              )}
-
-              <View style={styles.receiptRow}>
-                <Text style={styles.receiptIcon}>💰</Text>
-                <Text style={styles.receiptLabel}>Total:</Text>
-                <Text style={styles.receiptValueMono}>
-                  {calculation.formattedTotal}
+              <View style={styles.receiptHero}>
+                <Text style={styles.receiptHeroLabel}>
+                  PER PERSON · {calculation.peopleNum || numberOfPeople || 0} PEOPLE
                 </Text>
-              </View>
-
-              <View style={[styles.receiptRow, styles.receiptHighlightRow]}>
-                <Text style={styles.receiptIcon}>👥</Text>
-                <Text style={styles.receiptLabelHighlight}>Per Person:</Text>
-                <Text
-                  style={[
-                    styles.receiptValueMonoHighlight,
-                    { color: currentProviderConfig.color },
-                  ]}
-                >
+                <Text style={styles.receiptHeroAmount}>
                   {calculation.formattedShare}
+                </Text>
+                <Text style={styles.receiptHeroSub}>
+                  of {calculation.formattedTotal} total
+                  {eventName.trim() ? ` · ${eventName.trim()}` : ''}
                 </Text>
               </View>
 
@@ -527,15 +510,7 @@ export default function App() {
             <View style={styles.receiptFooter}>
               {activeQrUri ? (
                 <View style={styles.qrPreviewWrapper}>
-                  <View
-                    style={[
-                      styles.qrImageContainer,
-                      {
-                        borderColor: currentProviderConfig.color,
-                        shadowColor: currentProviderConfig.color,
-                      },
-                    ]}
-                  >
+              <View style={styles.qrImageContainer}>
                     <Image
                       source={{ uri: activeQrUri }}
                       style={styles.qrImage}
@@ -560,10 +535,7 @@ export default function App() {
                     + Attach Any Bank or Wallet QR Code
                   </Text>
                   <Text
-                    style={[
-                      styles.qrPlaceholderAction,
-                      { color: currentProviderConfig.color },
-                    ]}
+                    style={styles.qrPlaceholderAction}
                   >
                     Tap to upload screenshot (KBZ, AYA, Wave, CB, etc.)
                   </Text>
@@ -606,7 +578,7 @@ export default function App() {
                       <Text
                         style={[
                           styles.chipText,
-                          isSelected && styles.chipTextActive,
+                          isSelected && styles.currencyChipTextActive,
                         ]}
                       >
                         {curr.label}
@@ -773,10 +745,7 @@ export default function App() {
                 </View>
               ) : (
                 <TouchableOpacity
-                  style={[
-                    styles.uploadAnyBankButton,
-                    { borderColor: currentProviderConfig.color + '60' },
-                  ]}
+                  style={styles.uploadAnyBankButton}
                   onPress={handlePickQrImage}
                   activeOpacity={0.7}
                 >
@@ -796,7 +765,6 @@ export default function App() {
             <TouchableOpacity
               style={[
                 styles.primaryButton,
-                { backgroundColor: currentProviderConfig.color },
                 !calculation.isValid && styles.buttonDisabled,
               ]}
               onPress={handleShareBillAndQR}
@@ -938,11 +906,11 @@ export default function App() {
   );
 }
 
-// Deep Charcoal Dark Mode Stylesheet
+// Deep charcoal / Revolut-inspired dark stylesheet
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: '#000000',
   },
   keyboardContainer: {
     flex: 1,
@@ -963,23 +931,15 @@ const styles = StyleSheet.create({
   },
   appSubtitle: {
     fontSize: 13,
-    color: '#94A3B8',
+    color: '#8E8E93',
     marginTop: 4,
     lineHeight: 18,
   },
-  // 2. THE "PREMIUM RECEIPT" LIVE PREVIEW
   receiptContainer: {
-    backgroundColor: '#1E1E1E',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#2D2D2D',
+    backgroundColor: '#1C1C1E',
+    borderRadius: 20,
     padding: 16,
     marginBottom: 20,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 6,
   },
   receiptTopBar: {
     flexDirection: 'row',
@@ -990,7 +950,7 @@ const styles = StyleSheet.create({
   receiptBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#262626',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
@@ -1010,18 +970,41 @@ const styles = StyleSheet.create({
   receiptLiveTag: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#64748B',
+    color: '#2DD4BF',
     letterSpacing: 0.5,
   },
   receiptBody: {
     gap: 8,
+  },
+  receiptHero: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  receiptHeroLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#8E8E93',
+    letterSpacing: 1.4,
+    marginBottom: 8,
+  },
+  receiptHeroAmount: {
+    fontSize: 38,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -1,
+  },
+  receiptHeroSub: {
+    fontSize: 12,
+    color: '#8E8E93',
+    marginTop: 8,
+    textAlign: 'center',
   },
   receiptRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   receiptHighlightRow: {
-    backgroundColor: '#262626',
+    backgroundColor: '#2C2C2E',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 10,
@@ -1038,7 +1021,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   receiptLabel: {
-    color: '#94A3B8',
+    color: '#8E8E93',
     fontSize: 13,
     fontWeight: '500',
     marginRight: 6,
@@ -1066,10 +1049,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
   },
-  // Dashed Bottom Border / Divider
   dashedDivider: {
     borderBottomWidth: 1.5,
-    borderColor: '#333333',
+    borderColor: '#2C2C2E',
     borderStyle: 'dashed',
     marginVertical: 14,
   },
@@ -1081,16 +1063,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   qrImageContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 16,
-    borderWidth: 2.5,
+    width: 168,
+    height: 168,
+    borderRadius: 24,
     overflow: 'hidden',
-    backgroundColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 4,
+    backgroundColor: '#FFFFFF',
+    padding: 10,
   },
   qrImage: {
     width: '100%',
@@ -1104,7 +1082,7 @@ const styles = StyleSheet.create({
   },
   qrSubCaption: {
     fontSize: 10,
-    color: '#94A3B8',
+    color: '#8E8E93',
     marginTop: 2,
     textAlign: 'center',
   },
@@ -1127,8 +1105,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 4,
     textAlign: 'center',
+    color: '#2DD4BF',
   },
-  // 3. INPUT CONTROLS
   formSection: {
     marginBottom: 16,
   },
@@ -1158,7 +1136,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   activeCurrencyTag: {
-    color: '#60A5FA',
+    color: '#2DD4BF',
     fontSize: 12,
     fontWeight: '600',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
@@ -1166,13 +1144,12 @@ const styles = StyleSheet.create({
   optionalTag: {
     fontSize: 11,
     fontWeight: '400',
-    color: '#64748B',
+    color: '#636366',
   },
   input: {
-    backgroundColor: '#1E1E1E',
-    borderWidth: 1,
-    borderColor: '#2E2E2E',
-    borderRadius: 12,
+    backgroundColor: '#1C1C1E',
+    borderWidth: 0,
+    borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
@@ -1185,30 +1162,22 @@ const styles = StyleSheet.create({
   centerText: {
     textAlign: 'center',
   },
-  // Chips
   chipRow: {
     flexDirection: 'row',
     paddingVertical: 4,
     gap: 8,
   },
   chip: {
-    backgroundColor: '#1E1E1E',
-    borderWidth: 1,
-    borderColor: '#2E2E2E',
+    backgroundColor: '#1C1C1E',
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 20,
   },
   currencyChipActive: {
-    backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
-    shadowColor: '#2563EB',
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 3,
+    backgroundColor: '#FFFFFF',
   },
   chipText: {
-    color: '#94A3B8',
+    color: '#8E8E93',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -1216,12 +1185,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
   },
-  // QR Bank Card & Upload Section
+  currencyChipTextActive: {
+    color: '#000000',
+    fontWeight: '700',
+  },
   qrSectionCard: {
-    backgroundColor: '#181818',
-    borderWidth: 1,
-    borderColor: '#282828',
-    borderRadius: 14,
+    backgroundColor: '#1C1C1E',
+    borderRadius: 16,
     padding: 12,
     marginTop: 4,
   },
@@ -1245,29 +1215,28 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   anyBankBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.25)',
+    backgroundColor: 'rgba(45, 212, 191, 0.12)',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
   },
   anyBankBadgeText: {
-    color: '#34D399',
+    color: '#2DD4BF',
     fontSize: 10,
     fontWeight: '600',
   },
   qrSectionSubtitle: {
-    color: '#94A3B8',
+    color: '#8E8E93',
     fontSize: 11,
     lineHeight: 16,
     marginBottom: 10,
   },
   uploadAnyBankButton: {
-    backgroundColor: '#1E1E1E',
+    backgroundColor: '#000000',
     borderWidth: 1.2,
     borderStyle: 'dashed',
-    borderRadius: 12,
+    borderColor: 'rgba(255,255,255,0.16)',
+    borderRadius: 20,
     paddingVertical: 14,
     paddingHorizontal: 16,
     alignItems: 'center',
@@ -1284,13 +1253,11 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   uploadAnyBankSub: {
-    color: '#64748B',
+    color: '#636366',
     fontSize: 11,
   },
   activeQrCard: {
-    backgroundColor: '#202020',
-    borderWidth: 1,
-    borderColor: '#2E2E2E',
+    backgroundColor: '#000000',
     borderRadius: 12,
     padding: 10,
     flexDirection: 'row',
@@ -1307,18 +1274,18 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 8,
-    backgroundColor: '#000000',
+    backgroundColor: '#FFFFFF',
   },
   activeQrInfo: {
     flex: 1,
   },
   activeQrStatusText: {
-    color: '#34D399',
+    color: '#2DD4BF',
     fontSize: 12,
     fontWeight: '700',
   },
   activeQrSubText: {
-    color: '#94A3B8',
+    color: '#8E8E93',
     fontSize: 10,
     marginTop: 2,
   },
@@ -1328,10 +1295,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   changeQrButton: {
-    backgroundColor: '#2A2A2A',
-    borderWidth: 1,
-    borderColor: '#383838',
-    borderRadius: 8,
+    backgroundColor: '#2C2C2E',
+    borderRadius: 20,
     paddingVertical: 7,
     paddingHorizontal: 10,
   },
@@ -1341,57 +1306,45 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   removeQrButton: {
-    backgroundColor: '#2A1F1F',
-    borderWidth: 1,
-    borderColor: '#7F1D1D',
-    borderRadius: 8,
+    backgroundColor: 'rgba(255,69,58,0.12)',
+    borderRadius: 20,
     paddingVertical: 7,
     paddingHorizontal: 10,
   },
   removeQrButtonText: {
-    color: '#F87171',
+    color: '#FF453A',
     fontSize: 11,
     fontWeight: '600',
   },
-  // 5. ACTION BUTTONS
   actionSection: {
     gap: 10,
     marginTop: 6,
   },
   primaryButton: {
-    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 4,
   },
   secondaryButton: {
-    backgroundColor: '#1E1E1E',
-    borderWidth: 1,
-    borderColor: '#2E2E2E',
-    borderRadius: 14,
+    backgroundColor: '#1C1C1E',
+    borderRadius: 999,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   buttonDisabled: {
-    backgroundColor: '#181818',
-    borderColor: '#222222',
+    backgroundColor: '#1C1C1E',
     opacity: 0.5,
-    shadowOpacity: 0,
-    elevation: 0,
   },
   secondaryButtonSuccess: {
     backgroundColor: '#064E3B',
-    borderColor: '#059669',
   },
   primaryButtonText: {
-    color: '#FFFFFF',
+    color: '#000000',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 0.3,
   },
   secondaryButtonText: {
@@ -1404,36 +1357,27 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   saveHistoryButton: {
-    backgroundColor: '#181818',
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    borderRadius: 14,
+    backgroundColor: 'transparent',
+    borderRadius: 999,
     paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   saveHistoryButtonSuccess: {
-    backgroundColor: '#1E293B',
-    borderColor: '#3B82F6',
+    backgroundColor: 'rgba(45, 212, 191, 0.12)',
   },
   saveHistoryButtonText: {
-    color: '#94A3B8',
+    color: '#8E8E93',
     fontSize: 13,
     fontWeight: '600',
   },
   saveHistoryButtonTextSuccess: {
-    color: '#60A5FA',
+    color: '#2DD4BF',
     fontWeight: '700',
   },
-  // 6. HISTORY SECTION STYLES
   historySection: {
     marginTop: 20,
     marginBottom: 30,
-    backgroundColor: '#181818',
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#262626',
   },
   historyHeader: {
     flexDirection: 'row',
@@ -1450,25 +1394,25 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   historyTitle: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#F1F5F9',
-    letterSpacing: 0.2,
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
   },
   historyCountBadge: {
-    backgroundColor: '#262626',
+    backgroundColor: '#1C1C1E',
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 10,
   },
   historyCountText: {
-    color: '#94A3B8',
+    color: '#8E8E93',
     fontSize: 11,
     fontWeight: '600',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   clearHistoryText: {
-    color: '#EF4444',
+    color: '#FF453A',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -1479,20 +1423,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   historyEmptyText: {
-    color: '#64748B',
+    color: '#636366',
     fontSize: 12,
     textAlign: 'center',
     lineHeight: 18,
   },
   historyList: {
-    gap: 10,
+    backgroundColor: '#1C1C1E',
+    borderRadius: 20,
+    overflow: 'hidden',
   },
   historyCard: {
-    backgroundColor: '#202020',
-    borderRadius: 14,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#2D2D2D',
+    backgroundColor: '#1C1C1E',
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   historyCardTop: {
     flexDirection: 'row',
@@ -1507,13 +1452,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   historyEventName: {
-    color: '#E2E8F0',
-    fontSize: 13,
-    fontWeight: '600',
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
     maxWidth: '70%',
   },
   historyTime: {
-    color: '#64748B',
+    color: '#636366',
     fontSize: 11,
   },
   historyCardActions: {
@@ -1522,28 +1467,24 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   historyActionBadge: {
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#334155',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
   },
   historyActionBadgeText: {
-    color: '#60A5FA',
+    color: '#FFFFFF',
     fontSize: 10,
     fontWeight: '600',
   },
   historyDeleteButton: {
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 6,
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.25)',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 69, 58, 0.12)',
   },
   historyDeleteButtonText: {
-    color: '#F87171',
+    color: '#FF453A',
     fontSize: 10,
     fontWeight: '700',
   },
@@ -1553,17 +1494,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#262626',
+    borderTopColor: 'rgba(255,255,255,0.06)',
   },
   historyShareLabel: {
-    color: '#94A3B8',
+    color: '#8E8E93',
     fontSize: 10,
     textTransform: 'uppercase',
     fontWeight: '600',
     letterSpacing: 0.5,
   },
   historyShareAmount: {
-    color: '#10B981',
+    color: '#2DD4BF',
     fontSize: 15,
     fontWeight: '700',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
@@ -1578,7 +1519,7 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   historyMetaSub: {
-    color: '#64748B',
+    color: '#636366',
     fontSize: 10,
     marginTop: 2,
   },
