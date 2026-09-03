@@ -748,7 +748,7 @@ export default function MobileSimulator() {
   };
 
   return (
-    <div className="w-full max-w-[395px] mx-auto flex flex-col bg-[#101216] text-slate-100 rounded-[3rem] border-[8px] border-[#1F2430] shadow-[0_30px_90px_-15px_rgba(0,0,0,0.95)] overflow-hidden relative ring-1 ring-white/10 h-[780px]">
+    <div className="w-full max-w-[395px] mx-auto flex flex-col text-[var(--bs-text)] rounded-[2.75rem] border-[6px] border-[#2c2c2e] bs-phone-frame overflow-hidden relative h-[780px]">
       {/* Hidden File Input for QR Code Image Upload */}
       <input
         ref={fileInputRef}
@@ -760,13 +760,13 @@ export default function MobileSimulator() {
       />
 
       {/* Device Status Bar & Dynamic Island */}
-      <div className="px-6 pt-3 pb-1 flex items-center justify-between text-xs font-semibold text-slate-400 select-none bg-[#101216] shrink-0">
-        <span className="text-[13px] font-semibold text-white/90">9:41</span>
+      <div className="px-6 pt-3 pb-1 flex items-center justify-between text-xs font-semibold text-[var(--bs-text-muted)] select-none bs-device-chrome shrink-0">
+        <span className="text-[13px] font-semibold text-white/90 bs-mono">9:41</span>
         
         {/* Dynamic Island pill */}
-        <div className="w-24 h-5 bg-black border border-white/10 rounded-full flex items-center justify-end px-2 gap-1.5 shadow-inner">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="w-2.5 h-2.5 rounded-full bg-[#1A1A1A] border border-white/10" />
+        <div className="w-24 h-5 bg-[#1c1c1e] border border-white/10 rounded-full flex items-center justify-end px-2 gap-1.5 shadow-inner">
+          <span className="w-1.5 h-1.5 rounded-full bg-[var(--bs-accent)]" style={{ animation: 'bs-pulse-soft 2s ease-in-out infinite' }} />
+          <span className="w-2.5 h-2.5 rounded-full bg-[#0a0a0a] border border-white/10" />
         </div>
 
         <div className="flex items-center gap-1.5 text-slate-300">
@@ -778,17 +778,17 @@ export default function MobileSimulator() {
       </div>
 
       {/* App Header with Pro Badge & Side Tools Drawer Button */}
-      <div className="px-5 pt-2 pb-2.5 flex items-center justify-between border-b border-white/5 bg-[#101216] shrink-0">
+      <div className="px-5 pt-2 pb-3 flex items-center justify-between bs-device-chrome shrink-0">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-black tracking-tight text-white">
+            <h1 className="text-xl font-extrabold tracking-tight text-white bs-display">
               Bill Splitter
             </h1>
-            <span className="px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-[9px] font-bold text-blue-400">
+            <span className="px-2 py-0.5 rounded-full bg-[var(--bs-accent-soft)] text-[9px] font-bold text-[var(--bs-accent)]">
               PRO
             </span>
           </div>
-          <p className="text-slate-400 text-[11px] font-medium">
+          <p className="text-[var(--bs-text-muted)] text-[11px] font-medium">
             {activeNavTab === 'split' && 'Split bills & share polite receipts'}
             {activeNavTab === 'payment' && 'Manage payment info & bank QR'}
             {activeNavTab === 'history' && 'Past group bill calculations'}
@@ -805,9 +805,9 @@ export default function MobileSimulator() {
               setIsSideDrawerOpen(true);
             }}
             title="Side Tools & Presets"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#1B1F2D] hover:bg-[#23293D] text-slate-300 hover:text-white rounded-xl border border-white/10 transition active:scale-95 text-xs font-semibold"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[var(--bs-surface-raised)] hover:bg-[var(--bs-surface-hover)] text-[var(--bs-text-muted)] hover:text-white rounded-full transition bs-press text-xs font-semibold"
           >
-            <SlidersHorizontal className="w-3.5 h-3.5 text-blue-400" />
+            <SlidersHorizontal className="w-3.5 h-3.5 text-[var(--bs-accent)]" />
             <span className="text-[11px]">Tools</span>
           </button>
 
@@ -822,7 +822,7 @@ export default function MobileSimulator() {
               showToast('Reset to demo split');
             }}
             title="Reset to sample data"
-            className="p-1.5 text-white/40 hover:text-white hover:bg-white/5 rounded-xl border border-white/5 transition active:scale-95"
+            className="p-1.5 text-white/40 hover:text-white hover:bg-white/5 rounded-full transition bs-press"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
@@ -830,7 +830,7 @@ export default function MobileSimulator() {
       </div>
 
       {/* Main Content Area (Conditionally renders based on activeNavTab) */}
-      <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3 scrollbar-thin">
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 scrollbar-thin bg-black">
         {activeNavTab === 'split' && (
           <SplitTab
             eventName={eventName}
@@ -926,7 +926,7 @@ export default function MobileSimulator() {
 
       {/* In-app Toast Notification */}
       {notificationMsg && (
-        <div className="absolute top-14 left-1/2 -translate-x-1/2 z-40 bg-blue-600/95 text-white text-[11px] font-semibold px-3 py-1.5 rounded-full shadow-2xl backdrop-blur-xs border border-white/20 animate-in fade-in slide-in-from-top duration-200 pointer-events-none">
+        <div className="absolute top-14 left-1/2 -translate-x-1/2 z-40 bg-[#1c1c1e]/95 text-white text-[11px] font-semibold px-3.5 py-2 rounded-full shadow-2xl backdrop-blur-md bs-animate-fade pointer-events-none">
           {notificationMsg}
         </div>
       )}
@@ -940,7 +940,7 @@ export default function MobileSimulator() {
       />
 
       {/* iOS Home Indicator Bar */}
-      <div className="py-1 flex justify-center bg-[#101216] select-none shrink-0">
+      <div className="py-1 flex justify-center bs-device-chrome select-none shrink-0">
         <div className="w-28 h-1 bg-white/20 rounded-full" />
       </div>
 

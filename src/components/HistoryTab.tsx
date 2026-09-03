@@ -18,12 +18,11 @@ export default function HistoryTab({
   onStartNewSplit,
 }: HistoryTabProps) {
   return (
-    <div className="space-y-3.5 animate-in fade-in duration-150">
-      {/* History Header Card */}
-      <div className="flex items-center justify-between pb-1">
+    <div className="space-y-3 bs-stagger">
+      <div className="flex items-center justify-between px-0.5">
         <div>
-          <h2 className="text-sm font-bold text-white">Calculation History</h2>
-          <p className="text-[11px] text-slate-400">
+          <h2 className="text-lg font-bold text-white bs-display">History</h2>
+          <p className="text-[11px] text-[var(--bs-text-muted)]">
             {history.length > 0
               ? `${history.length} saved split${history.length > 1 ? 's' : ''}`
               : 'No saved splits yet'}
@@ -33,84 +32,70 @@ export default function HistoryTab({
           <button
             type="button"
             onClick={onClearHistory}
-            className="text-[10px] text-red-400 hover:text-red-300 font-semibold px-2.5 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition"
+            className="text-[11px] text-red-400 hover:text-red-300 font-semibold px-2 py-1 rounded-full hover:bg-red-500/10 transition"
           >
-            Clear All
+            Clear all
           </button>
         )}
       </div>
 
-      {/* History List */}
       {history.length === 0 ? (
-        <div className="p-8 text-center bg-[#151821] border border-[#282E3E] rounded-2xl space-y-2.5">
-          <div className="w-12 h-12 rounded-full bg-slate-800/80 border border-white/10 flex items-center justify-center mx-auto text-slate-400">
+        <div className="py-12 text-center space-y-3">
+          <div className="w-14 h-14 rounded-full bg-[var(--bs-surface-raised)] flex items-center justify-center mx-auto text-[var(--bs-text-muted)]">
             <Clock className="w-6 h-6" />
           </div>
-          <span className="text-sm font-bold text-slate-200 block">
-            No Saved Splits Yet
-          </span>
-          <p className="text-xs text-slate-400 max-w-[220px] mx-auto leading-relaxed">
-            Whenever you calculate a bill and tap "Share" or "Bookmark", it will be saved here for quick reference.
+          <span className="text-sm font-bold text-white block bs-display">No saved splits yet</span>
+          <p className="text-xs text-[var(--bs-text-muted)] max-w-[220px] mx-auto leading-relaxed">
+            Share or bookmark a bill and it shows up here for quick restore.
           </p>
           <button
             type="button"
             onClick={onStartNewSplit}
-            className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md transition active:scale-95"
+            className="mt-2 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-white text-black text-xs font-bold transition bs-press"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Create First Split</span>
+            Create first split
           </button>
         </div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="bs-card overflow-hidden divide-y divide-[var(--bs-border)]">
           {history.map((item) => (
             <div
               key={item.id}
               onClick={() => onRetrieveHistory(item)}
-              className="group p-3 bg-[#161922] hover:bg-[#1C202C] border border-[#262C3D] hover:border-blue-500/40 rounded-xl transition-all cursor-pointer select-none shadow-md"
+              className="group px-3.5 py-3.5 hover:bg-white/[0.03] transition-all cursor-pointer select-none"
               title="Click to restore this split calculation"
             >
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-xs font-bold text-slate-200 truncate">
-                    {item.eventName}
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-mono flex-shrink-0">
-                    • {item.dateStr}
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[10px] text-[var(--bs-text-dim)] bs-mono">{item.dateStr}</span>
+                    <span className="text-[10px] text-[var(--bs-text-dim)]">·</span>
+                    <span className="text-[10px] text-[var(--bs-text-muted)] truncate">{item.provider}</span>
+                  </div>
+                  <span className="text-sm font-bold text-white truncate block">{item.eventName}</span>
+                  <span className="text-[11px] text-[var(--bs-text-muted)]">
+                    {item.numberOfPeople} people · {item.formattedTotal}
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <span className="text-[10px] font-semibold text-blue-400 group-hover:text-blue-300 flex items-center gap-0.5 bg-blue-950/50 border border-blue-900/60 px-2 py-0.5 rounded-md transition">
-                    <span>Load</span>
-                    <ArrowUpRight className="w-2.5 h-2.5" />
-                  </span>
-                  <button
-                    type="button"
-                    title="Delete this history item"
-                    onClick={(e) => onDeleteHistoryItem(item.id, e)}
-                    className="p-1 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors border border-transparent hover:border-red-500/20 active:scale-90"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-end justify-between pt-2 border-t border-white/5">
-                <div>
-                  <span className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold block">
-                    Per Person Share
-                  </span>
-                  <span className="text-sm font-bold font-mono text-emerald-400">
+                <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
+                  <span className="text-sm font-bold bs-mono text-[var(--bs-accent)]">
                     {item.formattedShare}
                   </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs font-mono font-medium text-slate-300 block">
-                    Total: {item.formattedTotal}
-                  </span>
-                  <span className="text-[10px] text-slate-500">
-                    {item.numberOfPeople} people • {item.provider}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] font-semibold text-white/70 group-hover:text-white flex items-center gap-0.5 bg-white/5 px-2 py-0.5 rounded-full transition">
+                      Load
+                      <ArrowUpRight className="w-2.5 h-2.5" />
+                    </span>
+                    <button
+                      type="button"
+                      title="Delete this history item"
+                      onClick={(e) => onDeleteHistoryItem(item.id, e)}
+                      className="p-1 text-[var(--bs-text-dim)] hover:text-red-400 hover:bg-red-500/10 rounded-full transition bs-press"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

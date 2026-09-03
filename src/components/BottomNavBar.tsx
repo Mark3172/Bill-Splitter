@@ -21,75 +21,44 @@ export default function BottomNavBar({
     setActiveNavTab(tab);
   };
 
+  const tabs: { id: NavTabType; label: string; icon: React.ReactNode }[] = [
+    { id: 'split', label: 'Split', icon: <Receipt className="w-4 h-4" /> },
+    { id: 'payment', label: 'Pay & QR', icon: <QrCode className="w-4 h-4" /> },
+    { id: 'history', label: 'History', icon: <Clock className="w-4 h-4" /> },
+  ];
+
   return (
-    <div className="bg-[#12151D] border-t border-[#232838] px-3 pt-1.5 pb-1 flex items-center justify-around select-none shrink-0 z-20">
-      {/* Split Tab */}
-      <button
-        id="nav-tab-split"
-        type="button"
-        onClick={() => handleTabClick('split')}
-        className={`flex-1 py-1 flex flex-col items-center gap-0.5 transition ${
-          activeNavTab === 'split'
-            ? 'text-blue-400 font-bold'
-            : 'text-slate-400 hover:text-slate-200 font-medium'
-        }`}
-      >
-        <div
-          className={`p-1 rounded-xl transition ${
-            activeNavTab === 'split' ? 'bg-blue-500/15 ring-1 ring-blue-500/30' : ''
-          }`}
-        >
-          <Receipt className="w-4 h-4" />
-        </div>
-        <span className="text-[10px] tracking-tight">Split</span>
-      </button>
-
-      {/* Pay & QR Tab */}
-      <button
-        id="nav-tab-payment"
-        type="button"
-        onClick={() => handleTabClick('payment')}
-        className={`flex-1 py-1 flex flex-col items-center gap-0.5 transition ${
-          activeNavTab === 'payment'
-            ? 'text-blue-400 font-bold'
-            : 'text-slate-400 hover:text-slate-200 font-medium'
-        }`}
-      >
-        <div
-          className={`p-1 rounded-xl transition ${
-            activeNavTab === 'payment' ? 'bg-blue-500/15 ring-1 ring-blue-500/30' : ''
-          }`}
-        >
-          <QrCode className="w-4 h-4" />
-        </div>
-        <span className="text-[10px] tracking-tight">Pay & QR</span>
-      </button>
-
-      {/* History Tab */}
-      <button
-        id="nav-tab-history"
-        type="button"
-        onClick={() => handleTabClick('history')}
-        className={`flex-1 py-1 flex flex-col items-center gap-0.5 relative transition ${
-          activeNavTab === 'history'
-            ? 'text-blue-400 font-bold'
-            : 'text-slate-400 hover:text-slate-200 font-medium'
-        }`}
-      >
-        <div
-          className={`p-1 rounded-xl transition ${
-            activeNavTab === 'history' ? 'bg-blue-500/15 ring-1 ring-blue-500/30' : ''
-          }`}
-        >
-          <Clock className="w-4 h-4" />
-        </div>
-        <span className="text-[10px] tracking-tight">History</span>
-        {historyCount > 0 && (
-          <span className="absolute top-0.5 right-6 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-mono font-bold flex items-center justify-center shadow-sm">
-            {historyCount}
-          </span>
-        )}
-      </button>
+    <div className="bg-black border-t border-[var(--bs-border)] px-2 pt-1 pb-1 flex items-center justify-around select-none shrink-0 z-20">
+      {tabs.map((tab) => {
+        const active = activeNavTab === tab.id;
+        return (
+          <button
+            key={tab.id}
+            id={`nav-tab-${tab.id === 'payment' ? 'payment' : tab.id}`}
+            type="button"
+            onClick={() => handleTabClick(tab.id)}
+            className={`flex-1 py-1.5 flex flex-col items-center gap-0.5 relative transition ${
+              active
+                ? 'text-[var(--bs-accent)] font-bold'
+                : 'text-[var(--bs-text-dim)] hover:text-[var(--bs-text-muted)] font-medium'
+            }`}
+          >
+            {/* Splitwise-style active indicator line */}
+            {active && (
+              <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-[var(--bs-accent)]" />
+            )}
+            <div className="p-1 relative">
+              {tab.icon}
+              {tab.id === 'history' && historyCount > 0 && (
+                <span className="absolute -top-0.5 -right-1.5 min-w-4 h-4 px-0.5 rounded-full bg-[var(--bs-accent)] text-black text-[9px] font-mono font-bold flex items-center justify-center">
+                  {historyCount}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] tracking-tight">{tab.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
