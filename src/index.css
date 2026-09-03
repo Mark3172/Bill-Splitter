@@ -2,25 +2,26 @@
 @import "tailwindcss";
 
 :root {
-  /* Fintech charcoal + soft teal (modern banking / split-app feel) */
-  --bs-bg-deep: #07090d;
-  --bs-bg: #0c0f14;
-  --bs-surface: #12161e;
-  --bs-surface-raised: #171c26;
-  --bs-surface-hover: #1c2230;
-  --bs-border: rgba(255, 255, 255, 0.08);
-  --bs-border-strong: rgba(255, 255, 255, 0.14);
-  --bs-text: #f2f4f8;
-  --bs-text-muted: #8b93a7;
-  --bs-text-dim: #5c6578;
-  --bs-accent: #1ec8a5;
-  --bs-accent-soft: rgba(30, 200, 165, 0.14);
-  --bs-accent-border: rgba(30, 200, 165, 0.35);
-  --bs-accent-glow: rgba(30, 200, 165, 0.28);
-  --bs-danger: #f07178;
-  --bs-success: #34d399;
+  /* Mobbin-inspired: Revolut dark + Wise soft teal accents */
+  --bs-bg-deep: #000000;
+  --bs-bg: #050505;
+  --bs-surface: #121212;
+  --bs-surface-raised: #1c1c1e;
+  --bs-surface-hover: #2c2c2e;
+  --bs-border: rgba(255, 255, 255, 0.06);
+  --bs-border-strong: rgba(255, 255, 255, 0.12);
+  --bs-text: #ffffff;
+  --bs-text-muted: #8e8e93;
+  --bs-text-dim: #636366;
+  --bs-accent: #2dd4bf;
+  --bs-accent-soft: rgba(45, 212, 191, 0.12);
+  --bs-accent-border: rgba(45, 212, 191, 0.28);
+  --bs-accent-glow: rgba(45, 212, 191, 0.22);
+  --bs-danger: #ff453a;
+  --bs-success: #30d158;
   --bs-radius-lg: 1.25rem;
-  --bs-radius-md: 0.875rem;
+  --bs-radius-md: 1rem;
+  --bs-radius-pill: 999px;
   --bs-font: 'Outfit', ui-sans-serif, system-ui, sans-serif;
   --bs-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
@@ -43,38 +44,40 @@ body {
 }
 
 ::selection {
-  background: rgba(30, 200, 165, 0.35);
+  background: rgba(45, 212, 191, 0.35);
   color: #fff;
 }
 
-/* Soft ambient mesh for the web shell */
 .bs-shell-bg {
   background:
-    radial-gradient(ellipse 80% 55% at 12% -10%, rgba(30, 200, 165, 0.12), transparent 55%),
-    radial-gradient(ellipse 70% 50% at 90% 10%, rgba(56, 120, 220, 0.08), transparent 50%),
-    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(20, 40, 60, 0.5), transparent 60%),
-    linear-gradient(180deg, #0a0d12 0%, #07090d 100%);
+    radial-gradient(ellipse 70% 50% at 15% -5%, rgba(45, 212, 191, 0.08), transparent 55%),
+    radial-gradient(ellipse 60% 45% at 95% 5%, rgba(80, 120, 255, 0.05), transparent 50%),
+    linear-gradient(180deg, #0a0a0a 0%, #000000 100%);
 }
 
 .bs-glass {
-  background: rgba(12, 15, 20, 0.72);
-  backdrop-filter: blur(20px) saturate(1.2);
-  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  background: rgba(8, 8, 8, 0.78);
+  backdrop-filter: blur(20px) saturate(1.15);
+  -webkit-backdrop-filter: blur(20px) saturate(1.15);
 }
 
 .bs-phone-frame {
-  background: linear-gradient(165deg, #141820 0%, #0e1218 100%);
+  background: #000000;
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 28px 80px -20px rgba(0, 0, 0, 0.85),
-    0 0 60px -30px rgba(30, 200, 165, 0.25);
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 32px 90px -24px rgba(0, 0, 0, 0.95),
+    0 0 48px -28px rgba(45, 212, 191, 0.2);
 }
 
 .bs-device-chrome {
-  background: #0e1218;
+  background: #000000;
 }
 
-/* Typography helpers */
+.bs-card {
+  background: var(--bs-surface-raised);
+  border-radius: var(--bs-radius-lg);
+}
+
 .bs-display {
   font-family: var(--bs-font);
   letter-spacing: -0.03em;
@@ -84,7 +87,6 @@ body {
   font-family: var(--bs-mono);
 }
 
-/* Intentional motion */
 @keyframes bs-fade-up {
   from {
     opacity: 0;
@@ -117,11 +119,6 @@ body {
   50% { opacity: 0.55; }
 }
 
-@keyframes bs-shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
 .bs-animate-in {
   animation: bs-fade-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -144,10 +141,9 @@ body {
   animation: bs-fade-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* Scrollbars inside phone */
 .scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
 
 .scrollbar-thin::-webkit-scrollbar {
@@ -155,11 +151,10 @@ body {
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 999px;
 }
 
-/* Press feedback without changing behavior */
 .bs-press:active {
   transform: scale(0.98);
 }
@@ -171,4 +166,8 @@ body {
 .bs-accent-ring:focus-within {
   border-color: var(--bs-accent) !important;
   box-shadow: 0 0 0 3px var(--bs-accent-soft);
+}
+
+.bs-pill-cta {
+  border-radius: var(--bs-radius-pill);
 }
