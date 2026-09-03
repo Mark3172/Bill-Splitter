@@ -1,136 +1,143 @@
-# 🧾 Bill Splitter — React Native & Web
+# 🧾 Bill Splitter
 
-A mobile bill splitting utility app crafted for instant group expense calculation, payment QR code attachment, and 1-tap sharing with live receipt formatting.
+A React and React Native utility for splitting group bills, attaching payment QR codes, and sharing polished receipt summaries.
 
----
+## Highlights
 
-## ✨ Features
+- Live equal-split calculations with multi-currency formatting
+- Large per-person summary and receipt preview
+- KPay, AYA Pay, WavePay, and bank transfer support
+- Payment QR upload, preview, copy, and download
+- Shareable PNG receipt cards and formatted text
+- Auto-saved accounts, currency, QR codes, and recent history
+- Interactive web simulator and copy-ready Expo source
 
-- **Dynamic Math & Split Engine**: Live calculation of per-person share with thousands comma formatting.
-- **Premium Receipt Preview**: Live simulated receipt showing event name, total bill, individual share, and payment details.
-- **Multi-Payment Provider Support**:
-  - 🔵 **KPay** (KBZPay)
-  - 🔴 **AYA Pay**
-  - 🟡 **WavePay**
-  - 🟢 **Bank Transfer** (CB Bank, KBZ, AYA Bank, etc.)
-- **Payment QR Code Attachment**: Upload or take photos of payment QR codes directly on device with persistent storage.
-- **Auto-Persistence**:
-  - Mobile: `@react-native-async-storage/async-storage`
-  - Web: `localStorage`
-- **1-Tap Share & Clipboard**:
-  - Native image + message sharing via `expo-sharing` / `Share.share` / `navigator.share`.
-  - Formatted text copy with haptic feedback (`expo-haptics`).
+## UI
 
----
+The interface uses a dark fintech design inspired by production patterns found on Mobbin:
 
-## 📱 Getting Started with React Native / Expo
+- [Revolut Split bill](https://mobbin.com/screens/3fc54275-80f7-41c1-83ee-2dbff8296221) — dark surfaces, amount hierarchy, and pill actions
+- [Revolut Receive QR](https://mobbin.com/screens/3a001837-9f06-4875-8b0a-ecbffafd3f8e) — focused QR presentation
+- [Wise Split bill](https://mobbin.com/screens/2e45a42f-2609-4eb0-adb0-43d9f78bc064) — clear split summary
+- [Phantom Receive](https://mobbin.com/screens/2a707eff-e0a5-457b-b00c-58ec94bd96cc) — high-contrast QR card
+- [Splitwise split options](https://mobbin.com/flows/c539ec1a-b25e-46d0-bfad-4fbb01d514c2) — equal-split clarity and navigation cues
 
-### 1. Prerequisites
-- Node.js (v18 or higher recommended)
-- [Expo Go app](https://expo.dev/go) on your iOS or Android device
+The visual layer is separate from the calculation, persistence, and sharing logic.
 
-### 2. Create Expo Project & Install Dependencies
+## Run the Web App
+
+Requirements: Node.js 18 or newer.
 
 ```bash
-# Create project
-npx create-expo-app BillSplitter --template blank
-cd BillSplitter
-
-# Install required native dependencies
-npx expo install expo-clipboard expo-haptics @react-native-async-storage/async-storage expo-image-picker expo-sharing
+npm install
+npm run dev
 ```
 
-### 3. Replace `App.js`
-Replace the contents of `App.js` in your newly created project with the code from `src/expoCode.ts` (or the **App.js** tab in the web interface).
+Open [http://localhost:3000](http://localhost:3000).
 
-### 4. Run on Device
+Other commands:
 
 ```bash
-# Start the development server with tunnel mode
-npx expo start --tunnel
+npm run lint      # TypeScript validation
+npm run build     # Production build
+npm run preview   # Preview the production build
 ```
 
-- **iOS**: Open the Camera app on your iPhone and scan the QR code in the terminal.
-- **Android**: Open the **Expo Go** app and scan the QR code in the terminal.
+## Run with React Native / Expo
 
-#### Testing Over USB:
+1. Create a blank Expo project:
+
+   ```bash
+   npx create-expo-app BillSplitter --template blank
+   cd BillSplitter
+   ```
+
+2. Install the native dependencies:
+
+   ```bash
+   npx expo install expo-clipboard expo-haptics @react-native-async-storage/async-storage expo-image-picker expo-sharing
+   ```
+
+3. Replace the generated `App.js` with the source exported from `src/expoCode.ts`. You can also copy or download it from the web app's **App.js Code** view.
+
+4. Start Expo:
+
+   ```bash
+   npx expo start --tunnel
+   ```
+
+Scan the terminal QR code with the iOS Camera app or Expo Go on Android.
+
+### Android over USB
+
 ```bash
-# For Android over USB with ADB:
 adb reverse tcp:8081 tcp:8081
 npx expo start --localhost
-# Press 'a' in the terminal to launch on connected device
 ```
 
----
+Press `a` in the Expo terminal to launch the connected device.
 
-## 📦 Building a Standalone Android APK (EAS Build)
+## Build an Android APK
 
-To build a standalone `.apk` file without Android Studio:
-
-1. **Install EAS CLI and log in**:
-   ```bash
-   npm install -g eas-cli
-   eas login
-   eas build:configure
-   ```
-
-2. **Configure `eas.json` for APK builds**:
-   ```json
-   {
-     "cli": {
-       "version": ">= 12.0.0"
-     },
-     "build": {
-       "preview": {
-         "android": {
-           "buildType": "apk"
-         }
-       }
-     }
-   }
-   ```
-
-3. **Trigger the Cloud Build**:
-   ```bash
-   eas build -p android --profile preview
-   ```
-   Once the build completes, download the APK link or scan the QR code in the terminal to install directly on your phone.
-
----
-
-## 🌐 Running the Web Application
+Install and configure EAS:
 
 ```bash
-# Install packages
-npm install
-
-# Start Vite dev server
-npm run dev
-
-# Build for production
-npm run build
+npm install -g eas-cli
+eas login
+eas build:configure
 ```
 
----
+Configure an APK preview profile in `eas.json`:
 
-## 📂 Project Structure
-
+```json
+{
+  "cli": {
+    "version": ">= 12.0.0"
+  },
+  "build": {
+    "preview": {
+      "android": {
+        "buildType": "apk"
+      }
+    }
+  }
+}
 ```
-├── README.md               # Documentation & setup guide
-├── index.html              # Web entry point
-├── package.json            # Project dependencies & scripts
+
+Start the build:
+
+```bash
+eas build -p android --profile preview
+```
+
+## Persistence
+
+- Web simulator: `localStorage`
+- React Native app: `@react-native-async-storage/async-storage`
+- History keeps the five most recent successful calculations
+
+## Project Structure
+
+```text
+├── index.html
+├── package.json
 ├── src/
-│   ├── App.tsx             # Web container & preview layout
+│   ├── App.tsx
 │   ├── components/
-│   │   ├── MobileSimulator.tsx  # Interactive mobile simulator
-│   │   ├── CodeViewer.tsx       # Expo code viewer with copy
-│   │   └── MobileTestGuide.tsx  # Mobile connection & QR dialog
-│   ├── expoCode.ts         # Complete React Native App.js source
-│   ├── types.ts            # TypeScript definitions
-│   └── main.tsx            # React DOM mounting
+│   │   ├── BottomNavBar.tsx
+│   │   ├── CodeViewer.tsx
+│   │   ├── HistoryTab.tsx
+│   │   ├── MobileSimulator.tsx
+│   │   ├── MobileTestGuide.tsx
+│   │   ├── PaymentTab.tsx
+│   │   ├── ReceiptModal.tsx
+│   │   ├── SideDrawer.tsx
+│   │   └── SplitTab.tsx
+│   ├── utils/
+│   │   └── receiptGenerator.ts
+│   ├── expoCode.ts
+│   ├── index.css
+│   ├── main.tsx
+│   └── types.ts
+└── vite.config.ts
 ```
-
----
-
-## 📄 License
-MIT License
