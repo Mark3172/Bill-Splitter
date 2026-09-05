@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { projects, categories } from '../data/projects.js';
 import ProjectCard from './ProjectCard.jsx';
 import ProjectModal from './ProjectModal.jsx';
+import Reveal from './Reveal.jsx';
 
 const Projects = () => {
   const [activeCategory, setActiveCategory] = useState('all');
@@ -15,14 +16,16 @@ const Projects = () => {
   return (
     <section id="projects" className="section projects-section">
       <div className="container">
-        <div className="section-header">
-          <span className="section-eyebrow">Portfolio</span>
-          <h2 className="section-title">Featured Projects</h2>
-          <p className="section-subtitle">
-            Real work you can explore — watch Figma prototypes right on this page, browse the
-            source code, or read the case studies.
-          </p>
-        </div>
+        <Reveal>
+          <div className="section-header">
+            <span className="section-eyebrow">Portfolio</span>
+            <h2 className="section-title">Featured Projects</h2>
+            <p className="section-subtitle">
+              Real work you can explore — watch Figma prototypes right on this page, browse the
+              source code, or read the case studies.
+            </p>
+          </div>
+        </Reveal>
 
         <div className="filter-tabs" role="tablist" aria-label="Filter projects">
           {categories.map((cat) => (
@@ -44,12 +47,10 @@ const Projects = () => {
         </div>
 
         <div className="projects-grid">
-          {visible.map((project) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              onPreview={() => setPreviewProject(project)}
-            />
+          {visible.map((project, index) => (
+            <Reveal key={`${activeCategory}-${project.id}`} delay={index * 90}>
+              <ProjectCard project={project} onPreview={() => setPreviewProject(project)} />
+            </Reveal>
           ))}
         </div>
       </div>

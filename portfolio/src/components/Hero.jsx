@@ -4,6 +4,12 @@ const Hero = () => {
   return (
     <section id="home" className="hero">
       <div className="hero-glow" aria-hidden="true" />
+      <div className="hero-shapes" aria-hidden="true">
+        <span className="shape shape-1" />
+        <span className="shape shape-2" />
+        <span className="shape shape-3" />
+        <span className="shape shape-4" />
+      </div>
       <div className="container hero-inner">
         <div className="hero-copy">
           <span className="hero-badge">

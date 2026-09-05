@@ -39,7 +39,8 @@ export const projects = [
     description:
       'Split group bills in one touch: live equal-split math with multi-currency support, payment QR codes (KPay, AYA Pay, WavePay), and shareable PNG receipt cards. Ships as a web app plus an Expo mobile app.',
     tags: ['React', 'TypeScript', 'Expo', 'Fintech UI'],
-    image: 'https://opengraph.githubassets.com/1/Mark3172/Bill-Splitter',
+    image:
+      'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&h=500&fit=crop',
     role: 'Design & Development',
     timeline: 'Personal project',
     tech: ['React', 'TypeScript', 'Vite', 'Expo / React Native'],
@@ -55,7 +56,8 @@ export const projects = [
     description:
       'AI-powered environmental inspector: an agent core with a CLI and a first inspection UI that analyzes surroundings and reports environmental findings.',
     tags: ['AI Agent', 'TypeScript', 'CLI'],
-    image: 'https://opengraph.githubassets.com/1/Mark3172/greenlens-ai',
+    image:
+      'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&h=500&fit=crop',
     role: 'Design & Development',
     timeline: 'Personal project',
     tech: ['TypeScript', 'Node.js', 'LLM APIs'],
@@ -71,7 +73,8 @@ export const projects = [
     description:
       '24/7 student-support chatbot built with Stack AI and GPT-4. Designed the conversational UI patterns, quick-response layouts, and accessibility features, then shipped a hackathon MVP.',
     tags: ['Conversational UI', 'AI Interface', 'Hackathon MVP'],
-    image: 'https://opengraph.githubassets.com/1/Mark3172/atom-support-ai-chatbot',
+    image:
+      'https://images.unsplash.com/photo-1531746790731-6c087fecd65a?w=800&h=500&fit=crop',
     role: 'UX Designer · 5-person team',
     timeline: '3 months',
     tech: ['Figma', 'GPT-4', 'Stack AI', 'JavaScript'],
@@ -109,28 +112,13 @@ export const projects = [
     description:
       'Interactive music player that places sound in a 3D space, blending creative web graphics with audio playback for an immersive listening experience.',
     tags: ['3D Graphics', 'Web Audio', 'JavaScript'],
-    image: 'https://opengraph.githubassets.com/1/Mark3172/Spacial-3D-Music-Player',
+    image:
+      'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&h=500&fit=crop',
     role: 'Developer',
     timeline: 'Team project',
     tech: ['JavaScript', 'Web Audio API', 'CSS 3D'],
     links: {
       github: 'https://github.com/Mark3172/Spacial-3D-Music-Player',
-    },
-  },
-  {
-    id: 'forage-midas',
-    title: 'JPMC Midas — Advanced Software Engineering',
-    category: 'development',
-    categoryLabel: 'Backend Engineering',
-    description:
-      'Completed the J.P. Morgan Chase Advanced Software Engineering program (Forage): built a Java/Spring transaction-processing service with Kafka messaging, an H2 database layer, and REST APIs.',
-    tags: ['Java', 'Spring Boot', 'Kafka'],
-    image: 'https://opengraph.githubassets.com/1/Mark3172/forage-midas',
-    role: 'Software Engineer (virtual program)',
-    timeline: 'J.P. Morgan Chase · Forage',
-    tech: ['Java', 'Spring Boot', 'Kafka', 'H2', 'REST'],
-    links: {
-      github: 'https://github.com/Mark3172/forage-midas',
     },
   },
 ];

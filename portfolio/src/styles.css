@@ -145,6 +145,66 @@ button {
 }
 
 /* ============================================================
+   Animations
+   ============================================================ */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 600ms cubic-bezier(0.22, 0.9, 0.3, 1),
+    transform 600ms cubic-bezier(0.22, 0.9, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.reveal-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(24px, -30px) scale(1.08);
+  }
+  66% {
+    transform: translate(-18px, 18px) scale(0.95);
+  }
+}
+
+@keyframes gradient-shift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* ============================================================
    Section headers
    ============================================================ */
 .section-header {
@@ -391,6 +451,91 @@ button {
   pointer-events: none;
 }
 
+.hero-shapes {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.shape {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(48px);
+  opacity: 0.35;
+  animation: drift 14s ease-in-out infinite;
+}
+
+.shape-1 {
+  width: 340px;
+  height: 340px;
+  top: 8%;
+  left: -6%;
+  background: var(--accent-strong);
+}
+
+.shape-2 {
+  width: 260px;
+  height: 260px;
+  bottom: 10%;
+  right: -4%;
+  background: var(--accent-2);
+  animation-delay: -4s;
+}
+
+.shape-3 {
+  width: 180px;
+  height: 180px;
+  top: 18%;
+  right: 22%;
+  background: var(--accent);
+  animation-delay: -8s;
+  opacity: 0.22;
+}
+
+.shape-4 {
+  width: 140px;
+  height: 140px;
+  bottom: 22%;
+  left: 30%;
+  background: var(--accent-2);
+  animation-delay: -11s;
+  opacity: 0.18;
+}
+
+/* Staggered hero entrance */
+.hero-copy > * {
+  animation: rise-in 700ms cubic-bezier(0.22, 0.9, 0.3, 1) both;
+}
+
+.hero-copy > *:nth-child(1) {
+  animation-delay: 60ms;
+}
+
+.hero-copy > *:nth-child(2) {
+  animation-delay: 160ms;
+}
+
+.hero-copy > *:nth-child(3) {
+  animation-delay: 260ms;
+}
+
+.hero-copy > *:nth-child(4) {
+  animation-delay: 360ms;
+}
+
+.hero-copy > *:nth-child(5) {
+  animation-delay: 460ms;
+}
+
+.hero-copy > *:nth-child(6) {
+  animation-delay: 560ms;
+}
+
+.hero-card {
+  animation: rise-in 800ms cubic-bezier(0.22, 0.9, 0.3, 1) 400ms both;
+}
+
 .hero-inner {
   position: relative;
   display: grid;
@@ -430,10 +575,12 @@ button {
 }
 
 .accent-text {
-  background: linear-gradient(120deg, var(--accent) 20%, var(--accent-2) 100%);
+  background: linear-gradient(120deg, var(--accent), var(--accent-2), var(--accent));
+  background-size: 220% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  animation: gradient-shift 7s ease-in-out infinite;
 }
 
 .hero-role {
@@ -491,6 +638,7 @@ button {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   overflow: hidden;
+  animation: float 7s ease-in-out infinite;
 }
 
 .code-card-header {
@@ -625,6 +773,14 @@ button {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
   gap: 28px;
+}
+
+.projects-grid > .reveal {
+  display: flex;
+}
+
+.projects-grid .project-card {
+  width: 100%;
 }
 
 .project-card {
@@ -930,6 +1086,10 @@ button {
 .highlight-item p {
   font-size: 0.88rem;
   color: var(--text-muted);
+}
+
+.skills-aside {
+  align-self: stretch;
 }
 
 .skills-panel {

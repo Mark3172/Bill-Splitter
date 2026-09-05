@@ -1,9 +1,10 @@
 import { FaEnvelope, FaLinkedin, FaGithub } from 'react-icons/fa';
+import Reveal from './Reveal.jsx';
 
 const Contact = () => {
   return (
     <section id="contact" className="section contact-section">
-      <div className="container contact-inner">
+      <Reveal className="container contact-inner">
         <span className="section-eyebrow">Contact</span>
         <h2 className="section-title">Let&apos;s build something together</h2>
         <p className="contact-text">
@@ -31,7 +32,7 @@ const Contact = () => {
             <FaGithub aria-hidden="true" /> GitHub
           </a>
         </div>
-      </div>
+      </Reveal>
     </section>
   );
 };

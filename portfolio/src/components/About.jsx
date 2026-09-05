@@ -1,3 +1,5 @@
+import Reveal from './Reveal.jsx';
+
 const skills = {
   Design: ['Figma', 'Wireframing', 'Prototyping', 'Accessibility Design', 'Typography', 'Color Theory'],
   Development: ['React', 'TypeScript', 'JavaScript', 'HTML/CSS', 'Vite', 'Git', 'Java'],
@@ -10,8 +12,8 @@ const highlights = [
     text: 'I specialize in digital products for diverse users, including apps designed for neurodivergent and dyslexic audiences.',
   },
   {
-    title: 'J.P. Morgan Chase — Advanced Software Engineering (Forage)',
-    text: 'Completed the virtual engineering program: Java, Spring Boot, Kafka, and REST API development.',
+    title: 'From Figma to production',
+    text: 'I take products all the way: research, prototyping, and shipping real web and mobile apps in React, TypeScript, and Expo.',
   },
   {
     title: 'AIESEC cross-cultural experience',
@@ -23,13 +25,15 @@ const About = () => {
   return (
     <section id="about" className="section about-section">
       <div className="container">
-        <div className="section-header">
-          <span className="section-eyebrow">About</span>
-          <h2 className="section-title">Designer who codes</h2>
-        </div>
+        <Reveal>
+          <div className="section-header">
+            <span className="section-eyebrow">About</span>
+            <h2 className="section-title">Designer who codes</h2>
+          </div>
+        </Reveal>
 
         <div className="about-grid">
-          <div className="about-intro">
+          <Reveal className="about-intro">
             <div className="about-photo">
               <img
                 src="/profile-photo.jpeg"
@@ -64,9 +68,10 @@ const About = () => {
                 </li>
               ))}
             </ul>
-          </div>
+          </Reveal>
 
-          <aside className="skills-panel">
+          <Reveal delay={120} className="skills-aside">
+            <aside className="skills-panel">
             <h3 className="skills-title">Skills &amp; Tools</h3>
             {Object.entries(skills).map(([category, items]) => (
               <div key={category} className="skill-category">
@@ -80,7 +85,8 @@ const About = () => {
                 </div>
               </div>
             ))}
-          </aside>
+            </aside>
+          </Reveal>
         </div>
       </div>
     </section>
