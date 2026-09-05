@@ -108,7 +108,9 @@ const formatNumber = (val) => {
   return parts.join('.');
 };
 
-const ANDROID_TOP_INSET = Platform.OS === 'android' ? (StatusBar.currentHeight || 28) : 0;
+const ANDROID_TOP_INSET =
+  Platform.OS === 'android' ? Math.max(StatusBar.currentHeight || 0, 32) : 0;
+const HEADER_TOP_PAD = ANDROID_TOP_INSET + (Platform.OS === 'android' ? 24 : 12);
 
 function NavTabIcon({ name, active }) {
   const color = active ? '#2DD4BF' : '#8E8E93';
@@ -1253,7 +1255,7 @@ export default function App() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardContainer}
       >
-        <View style={[styles.header, { paddingTop: ANDROID_TOP_INSET + 12 }]}>
+        <View style={[styles.header, { paddingTop: HEADER_TOP_PAD }]}>
           <View style={{ flex: 1, paddingRight: 8 }}>
             <View style={styles.titleRow}>
               <Text style={styles.appTitle}>Bill Splitter</Text>
@@ -1939,7 +1941,7 @@ const styles = StyleSheet.create({
   },
   toast: {
     position: 'absolute',
-    top: ANDROID_TOP_INSET + 56,
+    top: HEADER_TOP_PAD + 44,
     alignSelf: 'center',
     backgroundColor: 'rgba(28,28,30,0.95)',
     paddingHorizontal: 14,
