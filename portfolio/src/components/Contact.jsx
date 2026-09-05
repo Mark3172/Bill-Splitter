@@ -12,8 +12,8 @@ const Contact = () => {
           mind or just want to say hi, my inbox is always open.
         </p>
         <div className="contact-buttons">
-          <a href="mailto:markmyosp@gmail.com" className="btn btn-primary">
-            <FaEnvelope aria-hidden="true" /> markmyosp@gmail.com
+          <a href="mailto:markmyo6@gmail.com" className="btn btn-primary">
+            <FaEnvelope aria-hidden="true" /> markmyo6@gmail.com
           </a>
           <a
             href="https://www.linkedin.com/in/mark3172/"

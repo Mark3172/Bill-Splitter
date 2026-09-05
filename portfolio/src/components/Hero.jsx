@@ -54,7 +54,7 @@ const Hero = () => {
             >
               <FaLinkedin /> <span>LinkedIn</span>
             </a>
-            <a href="mailto:markmyosp@gmail.com" aria-label="Email">
+            <a href="mailto:markmyo6@gmail.com" aria-label="Email">
               <FaEnvelope /> <span>Email</span>
             </a>
             <a
