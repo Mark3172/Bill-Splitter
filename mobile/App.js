@@ -13,6 +13,7 @@ import {
   Image,
   Alert,
   Share,
+  Modal,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
@@ -20,7 +21,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import * as Sharing from 'expo-sharing';
 
-// Payment providers and brand colors
 const PAYMENT_PROVIDERS = [
   { id: 'KPay', label: 'KPay', color: '#2563EB' },
   { id: 'AYA Pay', label: 'AYA Pay', color: '#E11D48' },
@@ -37,41 +37,96 @@ const CURRENCIES = [
   { id: 'GBP', symbol: '£', label: 'GBP (£)', placement: 'prefix', sample: '65.00' },
 ];
 
+const DEMO_PRESETS = [
+  {
+    name: 'Hotpot Dinner',
+    amounts: { MMK: '145000', USD: '140.00', EUR: '130.00', THB: '4800', SGD: '180.00', GBP: '110.00' },
+    people: '4',
+    icon: '🍲',
+    desc: '4 people equal split',
+  },
+  {
+    name: 'Friday Ride',
+    amounts: { MMK: '18500', USD: '24.00', EUR: '21.00', THB: '450', SGD: '30.00', GBP: '18.00' },
+    people: '3',
+    icon: '🚕',
+    desc: '3 people cab fare',
+  },
+  {
+    name: 'Coffee & Boba',
+    amounts: { MMK: '14000', USD: '14.00', EUR: '12.50', THB: '280', SGD: '18.00', GBP: '11.00' },
+    people: '2',
+    icon: '☕',
+    desc: '2 people afternoon drinks',
+  },
+  {
+    name: 'BBQ Gathering',
+    amounts: { MMK: '280000', USD: '260.00', EUR: '240.00', THB: '8900', SGD: '340.00', GBP: '210.00' },
+    people: '6',
+    icon: '🍖',
+    desc: '6 people meat & grill',
+  },
+  {
+    name: 'Party Drinks',
+    amounts: { MMK: '95000', USD: '90.00', EUR: '85.00', THB: '3200', SGD: '120.00', GBP: '75.00' },
+    people: '5',
+    icon: '🥂',
+    desc: '5 people night out',
+  },
+];
+
+const DEFAULT_ACCOUNTS = {
+  KPay: '09771234567',
+  'AYA Pay': '09771234567',
+  WavePay: '09251234119',
+  'Bank Transfer': 'CB Bank - 2001-3849-2910',
+};
+
+const SAMPLE_QR_KPAY =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAABQCAIAAAABc2X6AAAByklEQVR42u1bWw7CMAzLDfjkBPxwLY7PJUBCmgrNSpM+nUTaB1TaWq9e6zoy3R5P6XW53t/X8ePnb97+aflpP1rO2vOLbZcOnhSAhwJI31HNLcMBjwZQANYZMNtx/twJANguyp9M/fg1gJfTOH81esCFJaoAeD6N86FWjr8V8Coa56OdAXgEAOmWNgPwchoXFpdRM7yWxlMB70DjnoD/LuvbSstJ+/BCGrPTIAAsOjmspfHZzjRKSy+n8dkkDwe8lbSsBbzDdzjzJRI6AOmjCB2AlImEDkDKRPJA43Qw5IHG6YSRBxqnE0noAKRMJA805ldpwzRmANumMbMtOZKWHmicdkEeaPy1SnugcXqLV2lpm8b8edgwjWvPwybPyS6lpXkaa1ZpMywgDzRWGgBGpGW4lg5cS/M0rjoPm5WW4Vpady090DjtwqW0DNcyCuJREMeWluFaRkE8CuLA0jJcyyiIR0HcgrQM1zIK4lEQR5WWXcLDSK5l9/AwQEEcOiGuKYhLc0sWpKUutwTpWranS8Fcyy6BaaSCOHpCXCwtdelSbNdSF5hGdS0NJMRlBXHdtmRBWuryw3iuZXu6FM+1bAGMGuPBTYhLP6UXEkoMa18mWr0AAAAASUVORK5CYII=';
+const SAMPLE_QR_WAVEPAY =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAABQCAIAAAABc2X6AAAByklEQVR42u1byw7CMAzLkRtH/oHf56/4CpCQpkKz0qRPJ5F2gEpb69VrXUem5+Miva63+/s6fvz8zds/LT/tR8tZe36x7dLBkwLwUADpO6q5ZTjg0QAKwDoDZjvOnzsBANtF+ZOpH78G8HIa569GD7iwRBUAz6dxPtTK8bcCXkXjfLQzAI8AIN3SZgBeTuPC4jJqhtfSeCrgHWjcE/DfZX1baTlpH15IY3YaBIBFJ4e1ND7bmUZp6eU0Ppvk4YC3kpa1gHf4Dme+REIHIH0UoQOQMpHQAUiZSB5onA6GPNA4nTDyQON0IgkdgJSJ5IHG/CptmMYMYNs0ZrYlR9LSA43TLsgDjb9WaQ80Tm/xKi1t05g/Dxumce152OQ52aW0NE9jzSpthgXkgcZKA8CItAzX0oFraZ7GVedhs9IyXEvrrqUHGqdduJSW4VpGQTwK4tjSMlzLKIhHQRxYWoZrGQXxKIhbkJbhWkZBPAriqNKyS3gYybXsHh4GKIhDJ8Q1BXFpbsmCtNTlliBdy/Z0KZhr2SUwjVQQR0+Ii6WlLl2K7VrqAtOorqWBhLisIK7blixIS11+GM+1bE+X4rmWLYBRYzy4CXHpp/QC3j12lkvYFu8AAAAASUVORK5CYII=';
+const SAMPLE_QR_BANK =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAABQCAIAAAABc2X6AAAByUlEQVR42u1bWw7CMAzLDeCPO3BLjsXtQEKaCs1Kkz6dRNoHVNpar17rOjJdnw/pdbnd39fx4+dv3v5p+Wk/Ws7a84ttlw6eFICHAkjfUc0twwGPBlAA1hkw23H+3AkA2C7Kn0z9+DWAl9M4fzV6wIUlqgB4Po3zoVaOvxXwKhrno50BeAQA6ZY2A/ByGhcWl1EzvJbGUwHvQOOegP8u69tKy0n78EIas9MgACw6Oayl8dnONEpLL6fx2SQPB7yVtKwFvMN3OPMlEjoA6aMIHYCUiYQOQMpE8kDjdDDkgcbphJEHGqcTSegApEwkDzTmV2nDNGYA26Yxsy05kpYeaJx2QR5o/LVKe6BxeotXaWmbxvx52DCNa8/DJs/JLqWleRprVmkzLCAPNFYaAEakZbiWDlxL8zSuOg+blZbhWlp3LT3QOO3CpbQM1zIK4lEQx5aW4VpGQTwK4sDSMlzLKIhHQdyCtAzXMgriURBHlZZdwsNIrmX38DBAQRw6Ia4piEtzSxakpS63BOlatqdLwVzLLoFppII4ekJcLC116VJs11IXmEZ1LQ0kxGUFcd22ZEFa6vLDeK5le7oUz7VsAYwa48FNiEs/pRf2B+Nfxx6G9wAAAABJRU5ErkJggg==';
+
+const DEFAULT_QR_CODES = {
+  KPay: SAMPLE_QR_KPAY,
+  'AYA Pay': null,
+  WavePay: SAMPLE_QR_WAVEPAY,
+  'Bank Transfer': null,
+};
+
 const STORAGE_KEY = '@bill_splitter_data_v2';
 const HISTORY_STORAGE_KEY = '@bill_splitter_history_v1';
 
+const formatNumber = (val) => {
+  if (isNaN(val) || val === null || val === undefined) return '0';
+  const parts = val.toString().split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return parts.join('.');
+};
+
 export default function App() {
-  // Input states
-  const [eventName, setEventName] = useState('');
-  const [totalBill, setTotalBill] = useState('');
-  const [numberOfPeople, setNumberOfPeople] = useState('2');
+  const [eventName, setEventName] = useState('Hotpot Dinner');
+  const [totalBill, setTotalBill] = useState('145000');
+  const [numberOfPeople, setNumberOfPeople] = useState('4');
   const [selectedProvider, setSelectedProvider] = useState('KPay');
   const [selectedCurrency, setSelectedCurrency] = useState('MMK');
-
-  // Stored accounts and QR URIs per provider
-  const [accounts, setAccounts] = useState({
-    'KPay': '',
-    'AYA Pay': '',
-    'WavePay': '',
-    'Bank Transfer': '',
-  });
-
-  const [qrCodes, setQrCodes] = useState({
-    'KPay': null,
-    'AYA Pay': null,
-    'WavePay': null,
-    'Bank Transfer': null,
-  });
-
-  // Action feedback states
+  const [accounts, setAccounts] = useState({ ...DEFAULT_ACCOUNTS });
+  const [qrCodes, setQrCodes] = useState({ ...DEFAULT_QR_CODES });
   const [isCopied, setIsCopied] = useState(false);
+  const [isCardCopied, setIsCardCopied] = useState(false);
+  const [isQrCopied, setIsQrCopied] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [isSavedFeedback, setIsSavedFeedback] = useState(false);
-
-  // History state (last 5 successful calculations)
   const [history, setHistory] = useState([]);
+  const [activeNavTab, setActiveNavTab] = useState('split');
+  const [isSideDrawerOpen, setIsSideDrawerOpen] = useState(false);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [notificationMsg, setNotificationMsg] = useState(null);
+  const [includePerPersonInCopy, setIncludePerPersonInCopy] = useState(true);
+  const [copyFormatStyle, setCopyFormatStyle] = useState('friendly');
 
-  // Load saved accounts & QR image URIs from AsyncStorage on mount
   useEffect(() => {
     const loadPersistedData = async () => {
       try {
@@ -97,7 +152,6 @@ export default function App() {
     loadPersistedData();
   }, []);
 
-  // Persist updated state to AsyncStorage
   const persistData = async (newAccounts, newQrCodes, newCurrency = selectedCurrency) => {
     try {
       await AsyncStorage.setItem(
@@ -113,7 +167,19 @@ export default function App() {
     }
   };
 
-  // Account number change handler
+  const triggerHaptics = async () => {
+    try {
+      await Haptics.selectionAsync();
+    } catch (error) {
+      // Haptics are optional on web / unsupported devices
+    }
+  };
+
+  const showToast = (msg) => {
+    setNotificationMsg(msg);
+    setTimeout(() => setNotificationMsg(null), 2500);
+  };
+
   const handleAccountChange = useCallback(
     (text) => {
       const updatedAccounts = {
@@ -126,12 +192,9 @@ export default function App() {
     [accounts, qrCodes, selectedProvider, selectedCurrency]
   );
 
-  // QR Code Image Picker Handler
   const handlePickQrImage = async () => {
     try {
       await Haptics.selectionAsync();
-
-      // Request media library permissions
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permissionResult.granted) {
         Alert.alert(
@@ -141,7 +204,6 @@ export default function App() {
         return;
       }
 
-      // Launch Image Library Picker
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -158,6 +220,7 @@ export default function App() {
         setQrCodes(updatedQrCodes);
         persistData(accounts, updatedQrCodes);
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        showToast('Bank QR Code attached successfully!');
       }
     } catch (error) {
       console.error('Failed to pick QR image:', error);
@@ -165,7 +228,6 @@ export default function App() {
     }
   };
 
-  // Remove QR code handler
   const handleRemoveQrImage = async () => {
     await Haptics.selectionAsync();
     const updatedQrCodes = {
@@ -174,47 +236,41 @@ export default function App() {
     };
     setQrCodes(updatedQrCodes);
     persistData(accounts, updatedQrCodes);
+    showToast('Bank QR Code removed');
   };
 
-  // Helper for thousands formatting
-  const formatNumber = (val) => {
-    if (isNaN(val) || val === null || val === undefined) return '0';
-    const parts = val.toString().split('.');
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    return parts.join('.');
+  const handleSetSampleQR = async (method) => {
+    await triggerHaptics();
+    const sample =
+      method === 'KPay' ? SAMPLE_QR_KPAY : method === 'WavePay' ? SAMPLE_QR_WAVEPAY : SAMPLE_QR_BANK;
+    const updatedQrCodes = {
+      ...qrCodes,
+      [method]: sample,
+    };
+    setQrCodes(updatedQrCodes);
+    persistData(accounts, updatedQrCodes);
+    showToast(`Sample ${method} QR attached!`);
   };
 
-  // Active provider configuration
   const currentProviderConfig = useMemo(() => {
-    return (
-      PAYMENT_PROVIDERS.find((p) => p.id === selectedProvider) ||
-      PAYMENT_PROVIDERS[0]
-    );
+    return PAYMENT_PROVIDERS.find((p) => p.id === selectedProvider) || PAYMENT_PROVIDERS[0];
   }, [selectedProvider]);
 
-  // Active currency configuration
   const currentCurrencyConfig = useMemo(() => {
-    return (
-      CURRENCIES.find((c) => c.id === selectedCurrency) ||
-      CURRENCIES[0]
-    );
+    return CURRENCIES.find((c) => c.id === selectedCurrency) || CURRENCIES[0];
   }, [selectedCurrency]);
 
   const activeAccount = accounts[selectedProvider] || '';
   const activeQrUri = qrCodes[selectedProvider] || null;
 
-  // Calculation Logic & Conditional Formatted Text
   const calculation = useMemo(() => {
     const sanitizedBillStr = totalBill.replace(/[^0-9.]/g, '');
     const sanitizedPeopleStr = numberOfPeople.replace(/[^0-9]/g, '');
-
     const billNum = parseFloat(sanitizedBillStr);
     const peopleNum = parseInt(sanitizedPeopleStr, 10);
-
     const hasValidBill = !isNaN(billNum) && billNum > 0;
     const hasValidPeople = !isNaN(peopleNum) && peopleNum > 0;
     const isValid = hasValidBill && hasValidPeople;
-
     const share = isValid ? billNum / peopleNum : 0;
     const isDecimalCurrency = ['USD', 'EUR', 'GBP', 'SGD'].includes(selectedCurrency);
 
@@ -230,7 +286,7 @@ export default function App() {
       ? isDecimalCurrency && billNum % 1 !== 0
         ? formatNumber(parseFloat(billNum.toFixed(2)))
         : formatNumber(billNum)
-      : (totalBill.trim() || '0');
+      : totalBill.trim() || '0';
 
     const formattedShare =
       currentCurrencyConfig.placement === 'prefix'
@@ -242,23 +298,35 @@ export default function App() {
         ? `${currentCurrencyConfig.symbol}${formattedTotalNum}`
         : `${formattedTotalNum} ${currentCurrencyConfig.symbol}`;
 
-    // Build the formatted string dynamically (polite group sharing, NO 'Your Share'):
-    // - Omit Event Name if empty
-    // - Omit Send via line if Account Number is empty
     const lines = [];
+    const isFriendly = copyFormatStyle === 'friendly';
+    const peopleCountStr = peopleNum > 1 ? ` (${peopleNum} people)` : '';
 
     if (eventName.trim().length > 0) {
-      lines.push(`🍽️ ${eventName.trim()}`);
+      lines.push(isFriendly ? `🍽️ ${eventName.trim()}` : eventName.trim());
     }
-    const peopleCountStr = peopleNum > 1 ? ` (${peopleNum} people)` : '';
-    lines.push(`💰 Total: ${formattedTotal}${peopleCountStr}`);
-    lines.push(`👥 Per Person: ${formattedShare}`);
-
+    lines.push(
+      isFriendly
+        ? `💰 Total: ${formattedTotal}${peopleCountStr}`
+        : `Total: ${formattedTotal}${peopleCountStr}`
+    );
+    if (includePerPersonInCopy && isValid) {
+      lines.push(isFriendly ? `👥 Per Person: ${formattedShare}` : `Per Person: ${formattedShare}`);
+    }
     if (activeAccount.trim().length > 0) {
-      lines.push(`📱 Send via ${selectedProvider}: ${activeAccount.trim()}`);
+      lines.push(
+        isFriendly
+          ? `📱 Send via ${selectedProvider}: ${activeAccount.trim()}`
+          : `Send via ${selectedProvider}: ${activeAccount.trim()}`
+      );
     }
-
-    const formattedMessage = lines.join('\n');
+    if (activeQrUri) {
+      lines.push(
+        isFriendly
+          ? `📷 QR Code: Included (Scan with ${selectedProvider})`
+          : `QR Code: Attached (${selectedProvider})`
+      );
+    }
 
     return {
       isValid,
@@ -266,64 +334,21 @@ export default function App() {
       peopleNum: isNaN(peopleNum) ? 0 : peopleNum,
       formattedTotal,
       formattedShare,
-      formattedMessage,
+      formattedMessage: lines.join('\n'),
     };
-  }, [eventName, totalBill, numberOfPeople, selectedProvider, activeAccount, selectedCurrency, currentCurrencyConfig]);
+  }, [
+    eventName,
+    totalBill,
+    numberOfPeople,
+    selectedProvider,
+    activeAccount,
+    activeQrUri,
+    selectedCurrency,
+    currentCurrencyConfig,
+    includePerPersonInCopy,
+    copyFormatStyle,
+  ]);
 
-  // Primary Action: Share Bill & QR Code
-  const handleShareBillAndQR = async () => {
-    if (!calculation.isValid) return;
-
-    try {
-      setIsSharing(true);
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      saveCalculationToHistory(calculation);
-
-      // If a QR image is available and sharing is supported on this device
-      const isSharingAvailable = await Sharing.isAvailableAsync();
-
-      if (activeQrUri && isSharingAvailable) {
-        // Copy formatted message to clipboard first for convenience
-        await Clipboard.setStringAsync(calculation.formattedMessage);
-
-        // Share the QR Code Image with dialog title
-        await Sharing.shareAsync(activeQrUri, {
-          dialogTitle: `Bill Split: ${calculation.formattedShare} per person`,
-          mimeType: 'image/jpeg',
-          UTI: 'public.jpeg',
-        });
-      } else {
-        // Native Text Message Share Fallback
-        await Share.share({
-          message: calculation.formattedMessage,
-          title: 'Bill Splitter Summary',
-        });
-      }
-    } catch (error) {
-      console.error('Error sharing bill:', error);
-    } finally {
-      setIsSharing(false);
-    }
-  };
-
-  // Secondary Action: Copy Text Only
-  const handleCopyTextOnly = async () => {
-    if (!calculation.isValid) return;
-
-    try {
-      await Clipboard.setStringAsync(calculation.formattedMessage);
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      saveCalculationToHistory(calculation);
-      setIsCopied(true);
-      setTimeout(() => {
-        setIsCopied(false);
-      }, 2000);
-    } catch (error) {
-      console.error('Error copying text to clipboard:', error);
-    }
-  };
-
-  // Save successful calculation to History (stores last 5 calculations in AsyncStorage)
   const saveCalculationToHistory = useCallback(
     async (customCalculation = null) => {
       const calc = customCalculation || calculation;
@@ -346,21 +371,18 @@ export default function App() {
         };
 
         setHistory((prev) => {
-          // Check if top entry has identical calculation inputs
           const isDuplicateOfLatest =
             prev[0] &&
             prev[0].totalBill === newItem.totalBill &&
             prev[0].numberOfPeople === newItem.numberOfPeople &&
             prev[0].currency === newItem.currency &&
             prev[0].eventName === newItem.eventName;
-
           const filtered = isDuplicateOfLatest
             ? [newItem, ...prev.slice(1)]
             : [newItem, ...prev.filter((item) => item.id !== newItem.id)];
-
           const updatedHistory = filtered.slice(0, 5);
-          AsyncStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updatedHistory)).catch(
-            (err) => console.error('Error saving history to AsyncStorage:', err)
+          AsyncStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updatedHistory)).catch((err) =>
+            console.error('Error saving history to AsyncStorage:', err)
           );
           return updatedHistory;
         });
@@ -374,7 +396,6 @@ export default function App() {
     [calculation, eventName, totalBill, numberOfPeople, selectedCurrency, selectedProvider]
   );
 
-  // Auto-save successful calculation to history with debounce
   useEffect(() => {
     if (!calculation.isValid) return;
     const timer = setTimeout(() => {
@@ -393,7 +414,159 @@ export default function App() {
     saveCalculationToHistory,
   ]);
 
-  // Retrieve & restore previous split calculation from history
+  const shareQrOrText = async () => {
+    const isSharingAvailable = await Sharing.isAvailableAsync();
+    if (activeQrUri && isSharingAvailable) {
+      await Clipboard.setStringAsync(calculation.formattedMessage);
+      await Sharing.shareAsync(activeQrUri, {
+        dialogTitle: `Bill Split: ${calculation.formattedShare} per person`,
+        mimeType: 'image/jpeg',
+        UTI: 'public.jpeg',
+      });
+      return true;
+    }
+    await Share.share({
+      message: calculation.formattedMessage,
+      title: 'Bill Splitter Summary',
+    });
+    return false;
+  };
+
+  const handleShareBillAndQR = async () => {
+    if (!calculation.isValid) return;
+    try {
+      setIsSharing(true);
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      saveCalculationToHistory(calculation);
+      await shareQrOrText();
+    } catch (error) {
+      console.error('Error sharing bill:', error);
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handleCopyTextOnly = async () => {
+    if (!calculation.isValid) return;
+    try {
+      await Clipboard.setStringAsync(calculation.formattedMessage);
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      saveCalculationToHistory(calculation);
+      setIsCopied(true);
+      showToast('Text copied to clipboard!');
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (error) {
+      console.error('Error copying text to clipboard:', error);
+    }
+  };
+
+  const handleCopyAccountOnly = async () => {
+    if (!activeAccount.trim()) return;
+    await triggerHaptics();
+    try {
+      await Clipboard.setStringAsync(activeAccount.trim());
+      showToast(`${selectedProvider} number copied!`);
+    } catch (error) {
+      console.error('Account copy failed:', error);
+    }
+  };
+
+  const copyImageFromUri = async (uri) => {
+    if (!uri) return false;
+    if (uri.startsWith('data:image') && uri.includes(',')) {
+      const base64 = uri.split(',')[1];
+      if (Clipboard.setImageAsync) {
+        await Clipboard.setImageAsync(base64);
+        return true;
+      }
+    }
+    const isSharingAvailable = await Sharing.isAvailableAsync();
+    if (isSharingAvailable) {
+      await Sharing.shareAsync(uri, {
+        dialogTitle: 'Payment QR',
+        mimeType: 'image/png',
+      });
+      return true;
+    }
+    return false;
+  };
+
+  const handleCopyQrImageOnly = async () => {
+    if (!activeQrUri) return;
+    await triggerHaptics();
+    try {
+      const success = await copyImageFromUri(activeQrUri);
+      if (success) {
+        setIsQrCopied(true);
+        showToast('QR Code image copied!');
+        setTimeout(() => setIsQrCopied(false), 2000);
+      }
+    } catch (error) {
+      console.error('QR image copy failed:', error);
+    }
+  };
+
+  const handleCopyReceiptCard = async () => {
+    if (!calculation.isValid) return;
+    await triggerHaptics();
+    saveCalculationToHistory(calculation);
+    try {
+      await Clipboard.setStringAsync(calculation.formattedMessage);
+      if (activeQrUri) {
+        await copyImageFromUri(activeQrUri);
+      }
+      setIsCardCopied(true);
+      showToast('Receipt ready! Paste or share from the sheet.');
+      setTimeout(() => setIsCardCopied(false), 2500);
+    } catch (error) {
+      console.error('Copy receipt failed:', error);
+      setIsReceiptModalOpen(true);
+    }
+  };
+
+  const handleDownloadReceipt = async () => {
+    await triggerHaptics();
+    try {
+      if (activeQrUri) {
+        const isSharingAvailable = await Sharing.isAvailableAsync();
+        if (isSharingAvailable) {
+          await Sharing.shareAsync(activeQrUri, {
+            dialogTitle: 'Save receipt QR',
+            mimeType: 'image/png',
+          });
+          showToast('Receipt & QR image ready to save!');
+          return;
+        }
+      }
+      await Clipboard.setStringAsync(calculation.formattedMessage);
+      showToast('Receipt text copied. Attach a QR from Pay & QR to save an image.');
+    } catch (error) {
+      console.error('Download receipt failed:', error);
+    }
+  };
+
+  const handleOpenReceiptModal = async () => {
+    if (!calculation.isValid) return;
+    await triggerHaptics();
+    setIsReceiptModalOpen(true);
+  };
+
+  const handleAddAmount = async (increment) => {
+    await triggerHaptics();
+    const current = parseFloat(totalBill.replace(/[^0-9.]/g, '')) || 0;
+    const nextVal = current + increment;
+    const isDecimal = ['USD', 'EUR', 'GBP', 'SGD'].includes(selectedCurrency);
+    setTotalBill(isDecimal ? nextVal.toFixed(2) : String(Math.round(nextVal)));
+  };
+
+  const handleCurrencyChange = async (currId) => {
+    await triggerHaptics();
+    setSelectedCurrency(currId);
+    persistData(accounts, qrCodes, currId);
+    const curr = CURRENCIES.find((c) => c.id === currId);
+    showToast(`Currency set to ${currId} (${curr ? curr.symbol : ''})`);
+  };
+
   const handleRetrieveHistory = async (item) => {
     try {
       await Haptics.selectionAsync();
@@ -402,19 +575,15 @@ export default function App() {
       setNumberOfPeople(item.numberOfPeople);
       if (item.currency) setSelectedCurrency(item.currency);
       if (item.provider) setSelectedProvider(item.provider);
-      Alert.alert(
-        'Split Retrieved',
-        `Restored ${item.eventName}: ${item.formattedShare} per person.`
-      );
+      setActiveNavTab('split');
+      showToast(`Restored split: ${item.formattedShare} per person`);
     } catch (error) {
       console.error('Error retrieving history item:', error);
     }
   };
 
-  // Delete individual history item manually
-  const handleDeleteHistoryItem = async (id, e) => {
+  const handleDeleteHistoryItem = async (id) => {
     try {
-      e?.stopPropagation?.();
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setHistory((prev) => {
         const updated = prev.filter((item) => item.id !== id);
@@ -423,21 +592,567 @@ export default function App() {
         );
         return updated;
       });
+      showToast('Split removed from history');
     } catch (error) {
       console.error('Error deleting history item:', error);
     }
   };
 
-  // Clear history
   const handleClearHistory = async () => {
     try {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       setHistory([]);
       await AsyncStorage.removeItem(HISTORY_STORAGE_KEY);
+      showToast('Calculation history cleared');
     } catch (error) {
       console.error('Error clearing history:', error);
     }
   };
+
+  const handleResetDemo = async () => {
+    await triggerHaptics();
+    setEventName('Hotpot Dinner');
+    setTotalBill(currentCurrencyConfig.sample);
+    setNumberOfPeople('4');
+    showToast('Reset to demo split');
+  };
+
+  const handleResetAllData = () => {
+    Alert.alert('Reset all stored data?', 'This restores demo accounts, QR codes, and history.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Reset',
+        style: 'destructive',
+        onPress: async () => {
+          await triggerHaptics();
+          const nextAccounts = { ...DEFAULT_ACCOUNTS };
+          const nextQr = { ...DEFAULT_QR_CODES };
+          setAccounts(nextAccounts);
+          setQrCodes(nextQr);
+          setHistory([]);
+          setSelectedCurrency('MMK');
+          setEventName('Hotpot Dinner');
+          setTotalBill('145000');
+          setNumberOfPeople('4');
+          setIsSideDrawerOpen(false);
+          await AsyncStorage.removeItem(HISTORY_STORAGE_KEY);
+          persistData(nextAccounts, nextQr, 'MMK');
+          showToast('All data reset to defaults');
+        },
+      },
+    ]);
+  };
+
+  const headerSubtitle =
+    activeNavTab === 'split'
+      ? 'Split bills & share polite receipts'
+      : activeNavTab === 'payment'
+      ? 'Manage payment info & bank QR'
+      : 'Past group bill calculations';
+
+  const amountIncrements = ['MMK', 'THB'].includes(selectedCurrency)
+    ? [5000, 10000, 50000]
+    : [5, 10, 25];
+
+  const renderSplitTab = () => (
+    <View style={styles.tabStack}>
+      <View style={styles.eventRow}>
+        <Text style={styles.eventEmoji}>🍽️</Text>
+        <TextInput
+          style={styles.eventInput}
+          placeholder="Event / Location Name (e.g. Hotpot Dinner)"
+          placeholderTextColor="#636366"
+          value={eventName}
+          onChangeText={setEventName}
+          returnKeyType="next"
+        />
+        {eventName ? (
+          <TouchableOpacity onPress={() => setEventName('')} hitSlop={8}>
+            <Text style={styles.clearX}>✕</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.heroTop}>
+          <View style={styles.heroBadgeRow}>
+            <View style={[styles.dot, { backgroundColor: currentProviderConfig.color }]} />
+            <Text style={styles.mutedSmall}>
+              {selectedProvider} · {selectedCurrency}
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={handleOpenReceiptModal}
+            disabled={!calculation.isValid}
+            style={[styles.previewChip, !calculation.isValid && styles.disabled]}
+          >
+            <Text style={styles.previewChipText}>👁 Preview</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.heroCenter}>
+          <Text style={styles.heroLabel}>
+            PER PERSON · {calculation.peopleNum || 0}{' '}
+            {calculation.peopleNum === 1 ? 'PERSON' : 'PEOPLE'}
+          </Text>
+          <Text style={styles.heroAmount}>{calculation.formattedShare}</Text>
+          <Text style={styles.heroSub}>
+            of {calculation.formattedTotal} total
+            {eventName.trim() ? ` · ${eventName.trim()}` : ''}
+          </Text>
+          <View
+            style={[
+              styles.equalBadge,
+              { backgroundColor: `${currentProviderConfig.color}22` },
+            ]}
+          >
+            <Text style={[styles.equalBadgeText, { color: currentProviderConfig.color }]}>
+              {calculation.isValid ? 'Equal split' : 'Enter bill'}
+            </Text>
+          </View>
+        </View>
+
+        {activeAccount.trim().length > 0 ? (
+          <View style={styles.accountStrip}>
+            <Text style={styles.mutedSmall}>{selectedProvider}</Text>
+            <View style={styles.accountStripRight}>
+              <Text style={styles.accountMono} numberOfLines={1}>
+                {activeAccount}
+              </Text>
+              <TouchableOpacity onPress={handleCopyAccountOnly} hitSlop={8}>
+                <Text style={styles.copyGlyph}>⧉</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
+
+        {activeQrUri ? (
+          <View style={styles.qrStrip}>
+            <View style={styles.qrStripImageWrap}>
+              <Image source={{ uri: activeQrUri }} style={styles.qrStripImage} resizeMode="contain" />
+            </View>
+            <View style={styles.qrStripInfo}>
+              <Text style={styles.qrStripTitle}>Scan to pay</Text>
+              <Text style={styles.mutedTiny} numberOfLines={1}>
+                {selectedProvider} QR · friends can scan
+              </Text>
+              <View style={styles.qrStripActions}>
+                <TouchableOpacity
+                  onPress={handleCopyQrImageOnly}
+                  style={[styles.miniPill, isQrCopied && styles.miniPillSuccess]}
+                >
+                  <Text style={[styles.miniPillText, isQrCopied && styles.miniPillTextSuccess]}>
+                    {isQrCopied ? 'Copied' : 'Copy QR'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleDownloadReceipt} style={styles.miniIconBtn}>
+                  <Text style={styles.miniPillText}>↓</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        ) : null}
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.billPeopleRow}>
+          <View style={styles.billCol}>
+            <View style={styles.labelRow}>
+              <Text style={styles.fieldLabel}>Total bill</Text>
+              <Text style={styles.monoDim}>{currentCurrencyConfig.symbol}</Text>
+            </View>
+            <View style={styles.billInputWrap}>
+              {currentCurrencyConfig.placement === 'prefix' ? (
+                <Text style={styles.currencyAffix}>{currentCurrencyConfig.symbol}</Text>
+              ) : null}
+              <TextInput
+                style={[
+                  styles.billInput,
+                  currentCurrencyConfig.placement === 'prefix' && { paddingLeft: 28 },
+                ]}
+                placeholder={currentCurrencyConfig.sample}
+                placeholderTextColor="#636366"
+                keyboardType="numeric"
+                value={totalBill}
+                onChangeText={setTotalBill}
+                returnKeyType="next"
+              />
+              {currentCurrencyConfig.placement === 'suffix' ? (
+                <Text style={styles.currencySuffix}>{currentCurrencyConfig.symbol}</Text>
+              ) : null}
+            </View>
+            <View style={styles.chipRowWrap}>
+              {amountIncrements.map((inc) => (
+                <TouchableOpacity
+                  key={inc}
+                  onPress={() => handleAddAmount(inc)}
+                  style={styles.incChip}
+                >
+                  <Text style={styles.incChipText}>+{formatNumber(inc)}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.peopleCol}>
+            <Text style={styles.fieldLabel}>People</Text>
+            <View style={styles.peopleStepper}>
+              <TouchableOpacity
+                style={styles.stepBtn}
+                onPress={async () => {
+                  await triggerHaptics();
+                  const current = parseInt(numberOfPeople, 10) || 1;
+                  if (current > 1) setNumberOfPeople(String(current - 1));
+                }}
+              >
+                <Text style={styles.stepBtnText}>-</Text>
+              </TouchableOpacity>
+              <TextInput
+                style={styles.peopleInput}
+                placeholder="2"
+                placeholderTextColor="#636366"
+                keyboardType="number-pad"
+                value={numberOfPeople}
+                onChangeText={setNumberOfPeople}
+                returnKeyType="done"
+              />
+              <TouchableOpacity
+                style={styles.stepBtn}
+                onPress={async () => {
+                  await triggerHaptics();
+                  const current = parseInt(numberOfPeople, 10) || 0;
+                  setNumberOfPeople(String(current + 1));
+                }}
+              >
+                <Text style={styles.stepBtnText}>+</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.chipRowWrap}>
+              {['2', '3', '4', '5'].map((num) => (
+                <TouchableOpacity
+                  key={num}
+                  onPress={async () => {
+                    await triggerHaptics();
+                    setNumberOfPeople(num);
+                  }}
+                  style={[styles.peopleChip, numberOfPeople === num && styles.peopleChipOn]}
+                >
+                  <Text
+                    style={[styles.peopleChipText, numberOfPeople === num && styles.peopleChipTextOn]}
+                  >
+                    {num}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={styles.payingRow}
+          onPress={async () => {
+            await triggerHaptics();
+            setActiveNavTab('payment');
+          }}
+        >
+          <View style={styles.payingLeft}>
+            <View style={[styles.walletDot, { backgroundColor: currentProviderConfig.color }]}>
+              <Text style={styles.walletGlyph}>₩</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.payingLabel}>Paying to</Text>
+              <Text style={styles.payingValue} numberOfLines={1}>
+                {selectedProvider}
+                {activeAccount ? ` · ${activeAccount}` : ''}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.changeLink}>Change ›</Text>
+        </TouchableOpacity>
+      </View>
+
+      <TouchableOpacity
+        style={[styles.primaryPill, !calculation.isValid && styles.primaryPillDisabled]}
+        onPress={handleShareBillAndQR}
+        disabled={!calculation.isValid || isSharing}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.primaryPillText}>
+          {isSharing
+            ? 'Preparing Share Sheet...'
+            : activeQrUri
+            ? 'Share Bill & QR Image'
+            : 'Share Bill Summary'}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.receiptAction, isCardCopied && styles.receiptActionSuccess]}
+        onPress={handleCopyReceiptCard}
+        disabled={!calculation.isValid || isCardCopied}
+      >
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.receiptActionTitle, isCardCopied && styles.successText]}>
+            {isCardCopied
+              ? '✓ Receipt Image Copied!'
+              : `Copy Receipt Image ${activeQrUri ? '+ QR Code' : ''}`}
+          </Text>
+          <Text style={styles.receiptActionSub}>
+            {isCardCopied
+              ? 'Ready to paste as photo in chat'
+              : 'Copies high-res photo to paste directly into chat'}
+          </Text>
+        </View>
+        <TouchableOpacity
+          onPress={handleOpenReceiptModal}
+          disabled={!calculation.isValid}
+          style={styles.eyeBtn}
+        >
+          <Text style={styles.mutedSmall}>👁</Text>
+        </TouchableOpacity>
+      </TouchableOpacity>
+
+      <View style={styles.twoCol}>
+        <TouchableOpacity
+          style={[styles.secondaryPill, isCopied && styles.receiptActionSuccess]}
+          onPress={handleCopyTextOnly}
+          disabled={!calculation.isValid || isCopied}
+        >
+          <Text style={[styles.secondaryPillText, isCopied && styles.successText]}>
+            {isCopied ? 'Text Copied!' : 'Copy Text Only'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.secondaryPill}
+          onPress={handleDownloadReceipt}
+          disabled={!calculation.isValid}
+        >
+          <Text style={styles.secondaryPillText}>Save PNG</Text>
+        </TouchableOpacity>
+      </View>
+
+      <TouchableOpacity
+        style={styles.bookmarkBtn}
+        onPress={() => saveCalculationToHistory(calculation)}
+        disabled={!calculation.isValid}
+      >
+        <Text style={[styles.bookmarkText, isSavedFeedback && styles.accentText]}>
+          {isSavedFeedback ? '✓ Saved to History' : 'Bookmark this Split'}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.toolsHint}
+        onPress={async () => {
+          await triggerHaptics();
+          setIsSideDrawerOpen(true);
+        }}
+      >
+        <Text style={styles.mutedSmall}>⚡ Presets & currency ({selectedCurrency})</Text>
+        <Text style={styles.accentText}>Tools</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderPaymentTab = () => (
+    <View style={styles.tabStack}>
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>Payment provider</Text>
+        <Text style={styles.mutedTiny}>Wallet or bank for friends to pay</Text>
+        <View style={{ marginTop: 12, gap: 8 }}>
+          {PAYMENT_PROVIDERS.map((provider) => {
+            const isSelected = selectedProvider === provider.id;
+            const hasQR = !!qrCodes[provider.id];
+            return (
+              <TouchableOpacity
+                key={provider.id}
+                style={[styles.providerRow, isSelected && styles.providerRowOn]}
+                onPress={async () => {
+                  await triggerHaptics();
+                  setSelectedProvider(provider.id);
+                }}
+              >
+                <View style={styles.payingLeft}>
+                  <View
+                    style={[
+                      styles.dot,
+                      { backgroundColor: isSelected ? provider.color : `${provider.color}99` },
+                    ]}
+                  />
+                  <Text style={[styles.providerName, isSelected && styles.providerNameOn]}>
+                    {provider.label}
+                  </Text>
+                </View>
+                <View style={styles.payingLeft}>
+                  {hasQR ? <View style={styles.qrReadyDot} /> : null}
+                  {isSelected ? <Text style={styles.checkMark}>✓</Text> : null}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <View style={{ marginTop: 14 }}>
+          <View style={styles.labelRow}>
+            <Text style={styles.fieldLabel}>{selectedProvider} phone / account</Text>
+            <Text style={styles.accentTiny}>Auto-saved</Text>
+          </View>
+          <View style={styles.accountInputWrap}>
+            <TextInput
+              style={styles.accountInput}
+              placeholder={`Enter your ${selectedProvider} details`}
+              placeholderTextColor="#636366"
+              value={activeAccount}
+              onChangeText={handleAccountChange}
+              keyboardType={selectedProvider === 'Bank Transfer' ? 'default' : 'phone-pad'}
+              returnKeyType="done"
+            />
+            {activeAccount ? (
+              <TouchableOpacity onPress={handleCopyAccountOnly} style={styles.inlineCopy}>
+                <Text style={styles.inlineCopyText}>Copy</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.labelRow}>
+          <Text style={styles.sectionTitle}>{selectedProvider} QR</Text>
+          <Text style={styles.mutedTiny}>Photo / screenshot</Text>
+        </View>
+        {activeQrUri ? (
+          <View style={styles.qrLargeWrap}>
+            <View style={styles.qrLargeFrame}>
+              <Image source={{ uri: activeQrUri }} style={styles.qrLargeImage} resizeMode="contain" />
+            </View>
+            <Text style={styles.qrStripTitle}>Scan to get paid via {selectedProvider}</Text>
+            <Text style={styles.mutedTiny}>Included when sharing the bill summary</Text>
+            <View style={styles.twoCol}>
+              <TouchableOpacity
+                style={[styles.secondaryPill, isQrCopied && styles.miniPillSuccess]}
+                onPress={handleCopyQrImageOnly}
+              >
+                <Text style={[styles.secondaryPillText, isQrCopied && styles.miniPillTextSuccess]}>
+                  {isQrCopied ? 'Copied!' : 'Copy'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.secondaryPill} onPress={handleDownloadReceipt}>
+                <Text style={styles.secondaryPillText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.qrEditRow}>
+              <TouchableOpacity onPress={handlePickQrImage}>
+                <Text style={styles.accentText}>Change</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleRemoveQrImage}>
+                <Text style={styles.dangerText}>Remove</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.uploadDashed} onPress={handlePickQrImage}>
+            <Text style={styles.uploadIcon}>☁</Text>
+            <Text style={styles.qrStripTitle}>Upload QR screenshot</Text>
+            <Text style={styles.mutedTiny}>KBZPay, Wave, AYA, CB, PromptPay — tap to choose</Text>
+          </TouchableOpacity>
+        )}
+        {!activeQrUri ? (
+          <TouchableOpacity
+            onPress={() => handleSetSampleQR(selectedProvider)}
+            style={styles.sampleQrBtn}
+          >
+            <Text style={styles.accentText}>✦ Use sample {selectedProvider} QR</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+
+      <TouchableOpacity
+        style={styles.primaryPill}
+        onPress={async () => {
+          await triggerHaptics();
+          setActiveNavTab('split');
+        }}
+      >
+        <Text style={styles.primaryPillText}>✓ Done, return to Split</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderHistoryTab = () => (
+    <View style={styles.tabStack}>
+      <View style={styles.labelRow}>
+        <View>
+          <Text style={styles.pageTitle}>History</Text>
+          <Text style={styles.mutedTiny}>
+            {history.length > 0
+              ? `${history.length} saved split${history.length > 1 ? 's' : ''}`
+              : 'No saved splits yet'}
+          </Text>
+        </View>
+        {history.length > 0 ? (
+          <TouchableOpacity onPress={handleClearHistory}>
+            <Text style={styles.dangerText}>Clear all</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+
+      {history.length === 0 ? (
+        <View style={styles.emptyHistory}>
+          <Text style={styles.emptyClock}>🕒</Text>
+          <Text style={styles.sectionTitle}>No saved splits yet</Text>
+          <Text style={styles.emptyCopy}>
+            Share or bookmark a bill and it shows up here for quick restore.
+          </Text>
+          <TouchableOpacity
+            style={styles.primaryPill}
+            onPress={async () => {
+              await triggerHaptics();
+              setActiveNavTab('split');
+            }}
+          >
+            <Text style={styles.primaryPillText}>Create first split</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.card}>
+          {history.map((item, index) => (
+            <TouchableOpacity
+              key={item.id}
+              style={[styles.historyRow, index === history.length - 1 && { borderBottomWidth: 0 }]}
+              onPress={() => handleRetrieveHistory(item)}
+            >
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.historyMeta}>
+                  {item.dateStr} · {item.provider}
+                </Text>
+                <Text style={styles.historyName} numberOfLines={1}>
+                  {item.eventName}
+                </Text>
+                <Text style={styles.mutedTiny}>
+                  {item.numberOfPeople} people · {item.formattedTotal}
+                </Text>
+              </View>
+              <View style={styles.historyRight}>
+                <Text style={styles.historyShare}>{item.formattedShare}</Text>
+                <View style={styles.historyActions}>
+                  <View style={styles.loadChip}>
+                    <Text style={styles.loadChipText}>Load ↗</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleDeleteHistoryItem(item.id)}
+                    hitSlop={8}
+                  >
+                    <Text style={styles.dangerText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -446,1082 +1161,837 @@ export default function App() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardContainer}
       >
+        <View style={styles.header}>
+          <View style={{ flex: 1, paddingRight: 8 }}>
+            <View style={styles.titleRow}>
+              <Text style={styles.appTitle}>Bill Splitter</Text>
+              <View style={styles.proBadge}>
+                <Text style={styles.proBadgeText}>PRO</Text>
+              </View>
+            </View>
+            <Text style={styles.appSubtitle}>{headerSubtitle}</Text>
+          </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.toolsBtn}
+              onPress={async () => {
+                await triggerHaptics();
+                setIsSideDrawerOpen(true);
+              }}
+            >
+              <Text style={styles.toolsBtnText}>⚙ Tools</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleResetDemo} hitSlop={8} style={styles.resetBtn}>
+              <Text style={styles.resetGlyph}>↺</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.appTitle}>Bill Splitter</Text>
-            <Text style={styles.appSubtitle}>
-              Calculate shares, attach QR code, & share in one tap
-            </Text>
+          {activeNavTab === 'split' && renderSplitTab()}
+          {activeNavTab === 'payment' && renderPaymentTab()}
+          {activeNavTab === 'history' && renderHistoryTab()}
+        </ScrollView>
+
+        {notificationMsg ? (
+          <View style={styles.toast} pointerEvents="none">
+            <Text style={styles.toastText}>{notificationMsg}</Text>
           </View>
+        ) : null}
 
-          {/* 2. THE "PREMIUM RECEIPT" LIVE PREVIEW */}
-          <View style={styles.receiptContainer}>
-            {/* Top Receipt Bar */}
-            <View style={styles.receiptTopBar}>
-              <View style={styles.receiptBadge}>
-                <View
-                  style={[
-                    styles.receiptBadgeDot,
-                    { backgroundColor: currentProviderConfig.color },
-                  ]}
-                />
-                <Text style={styles.receiptBadgeText}>
-                  {selectedProvider.toUpperCase()} RECEIPT • {selectedCurrency}
-                </Text>
-              </View>
-              <Text style={styles.receiptLiveTag}>LIVE PREVIEW</Text>
-            </View>
-
-            {/* Receipt Body: Formatted Text */}
-            <View style={styles.receiptBody}>
-              <View style={styles.receiptHero}>
-                <Text style={styles.receiptHeroLabel}>
-                  PER PERSON · {calculation.peopleNum || numberOfPeople || 0} PEOPLE
-                </Text>
-                <Text style={styles.receiptHeroAmount}>
-                  {calculation.formattedShare}
-                </Text>
-                <Text style={styles.receiptHeroSub}>
-                  of {calculation.formattedTotal} total
-                  {eventName.trim() ? ` · ${eventName.trim()}` : ''}
-                </Text>
-              </View>
-
-              {activeAccount.trim().length > 0 && (
-                <View style={styles.receiptRow}>
-                  <Text style={styles.receiptIcon}>📱</Text>
-                  <Text style={styles.receiptLabel}>Send via {selectedProvider}:</Text>
-                  <Text style={styles.receiptAccountText} numberOfLines={1}>
-                    {activeAccount.trim()}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            {/* Dashed Horizontal Divider */}
-            <View style={styles.dashedDivider} />
-
-            {/* Receipt Bottom: QR Code Section */}
-            <View style={styles.receiptFooter}>
-              {activeQrUri ? (
-                <View style={styles.qrPreviewWrapper}>
-              <View style={styles.qrImageContainer}>
-                    <Image
-                      source={{ uri: activeQrUri }}
-                      style={styles.qrImage}
-                      resizeMode="cover"
-                    />
-                  </View>
-                  <Text style={styles.qrCaption}>
-                    Scan with Any Banking App
-                  </Text>
-                  <Text style={styles.qrSubCaption}>
-                    KBZPay • Wave • AYA • CB Bank & All Wallets
-                  </Text>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  onPress={handlePickQrImage}
-                  style={styles.qrPlaceholder}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.qrPlaceholderIcon}>📷</Text>
-                  <Text style={styles.qrPlaceholderText}>
-                    + Attach Any Bank or Wallet QR Code
-                  </Text>
-                  <Text
-                    style={styles.qrPlaceholderAction}
-                  >
-                    Tap to upload screenshot (KBZ, AYA, Wave, CB, etc.)
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-
-          {/* 3. INPUT CONTROLS */}
-          <View style={styles.formSection}>
-            {/* Currency Selector */}
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.label}>Currency</Text>
-                <Text style={styles.activeCurrencyTag}>
-                  Active: {currentCurrencyConfig.id} ({currentCurrencyConfig.symbol})
-                </Text>
-              </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.chipRow}
+        <View style={styles.bottomNav}>
+          {[
+            { id: 'split', label: 'Split', icon: '🧾' },
+            { id: 'payment', label: 'Pay & QR', icon: '▢' },
+            { id: 'history', label: 'History', icon: '🕒' },
+          ].map((tab) => {
+            const active = activeNavTab === tab.id;
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                style={styles.navItem}
+                onPress={async () => {
+                  await triggerHaptics();
+                  setActiveNavTab(tab.id);
+                }}
               >
+                {active ? <View style={styles.navActiveLine} /> : null}
+                <View>
+                  <Text style={[styles.navIcon, active && styles.navIconActive]}>{tab.icon}</Text>
+                  {tab.id === 'history' && history.length > 0 ? (
+                    <View style={styles.navBadge}>
+                      <Text style={styles.navBadgeText}>{history.length}</Text>
+                    </View>
+                  ) : null}
+                </View>
+                <Text style={[styles.navLabel, active && styles.navLabelActive]}>{tab.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </KeyboardAvoidingView>
+
+      <Modal visible={isSideDrawerOpen} animationType="slide" transparent onRequestClose={() => setIsSideDrawerOpen(false)}>
+        <View style={styles.drawerRoot}>
+          <TouchableOpacity style={styles.drawerScrim} onPress={() => setIsSideDrawerOpen(false)} />
+          <View style={styles.drawerPanel}>
+            <View style={styles.drawerHeader}>
+              <Text style={styles.sectionTitle}>⚙ Side Tools & Presets</Text>
+              <TouchableOpacity onPress={() => setIsSideDrawerOpen(false)}>
+                <Text style={styles.clearX}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.drawerSection}>Quick Presets (1-Tap Fill)</Text>
+              {DEMO_PRESETS.map((preset) => (
+                <TouchableOpacity
+                  key={preset.name}
+                  style={styles.presetRow}
+                  onPress={async () => {
+                    await triggerHaptics();
+                    setEventName(preset.name);
+                    if (preset.amounts[selectedCurrency]) {
+                      setTotalBill(preset.amounts[selectedCurrency]);
+                    }
+                    setNumberOfPeople(preset.people);
+                    setIsSideDrawerOpen(false);
+                    setActiveNavTab('split');
+                    showToast(`Loaded "${preset.name}" preset`);
+                  }}
+                >
+                  <View style={styles.payingLeft}>
+                    <Text style={{ fontSize: 16 }}>{preset.icon}</Text>
+                    <View>
+                      <Text style={styles.presetName}>{preset.name}</Text>
+                      <Text style={styles.mutedTiny}>{preset.desc}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.loadChipTextAccent}>Load</Text>
+                </TouchableOpacity>
+              ))}
+
+              <Text style={styles.drawerSection}>Select Currency</Text>
+              <View style={styles.currencyGrid}>
                 {CURRENCIES.map((curr) => {
-                  const isSelected = selectedCurrency === curr.id;
+                  const on = selectedCurrency === curr.id;
                   return (
                     <TouchableOpacity
                       key={curr.id}
-                      activeOpacity={0.7}
-                      style={[
-                        styles.chip,
-                        isSelected && styles.currencyChipActive,
-                      ]}
-                      onPress={async () => {
-                        await Haptics.selectionAsync();
-                        setSelectedCurrency(curr.id);
-                        persistData(accounts, qrCodes, curr.id);
-                      }}
+                      style={[styles.currencyCell, on && styles.currencyCellOn]}
+                      onPress={() => handleCurrencyChange(curr.id)}
                     >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          isSelected && styles.currencyChipTextActive,
-                        ]}
-                      >
-                        {curr.label}
-                      </Text>
+                      <Text style={[styles.currencySym, on && styles.currencyOnText]}>{curr.symbol}</Text>
+                      <Text style={[styles.currencyCode, on && styles.currencyOnText]}>{curr.id}</Text>
                     </TouchableOpacity>
                   );
                 })}
-              </ScrollView>
-            </View>
-
-            {/* Event / Location Name (Optional) */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>
-                Event / Location Name <Text style={styles.optionalTag}>(Optional)</Text>
-              </Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g., Hotpot Dinner, Grab Ride"
-                placeholderTextColor="#64748B"
-                value={eventName}
-                onChangeText={setEventName}
-                returnKeyType="next"
-              />
-            </View>
-
-            {/* Numeric Row: Total Bill & Number of People */}
-            <View style={styles.row}>
-              <View style={[styles.inputGroup, styles.flexTwo]}>
-                <Text style={styles.label}>
-                  Total Bill Amount ({currentCurrencyConfig.symbol})
-                </Text>
-                <TextInput
-                  style={[styles.input, styles.monoInput]}
-                  placeholder={currentCurrencyConfig.sample}
-                  placeholderTextColor="#64748B"
-                  keyboardType="numeric"
-                  value={totalBill}
-                  onChangeText={setTotalBill}
-                  returnKeyType="next"
-                />
               </View>
 
-              <View style={[styles.inputGroup, styles.flexOne]}>
-                <Text style={styles.label}>No. of People</Text>
-                <TextInput
-                  style={[styles.input, styles.monoInput, styles.centerText]}
-                  placeholder="2"
-                  placeholderTextColor="#64748B"
-                  keyboardType="number-pad"
-                  value={numberOfPeople}
-                  onChangeText={setNumberOfPeople}
-                  returnKeyType="done"
-                />
-              </View>
-            </View>
-
-            {/* Payment Method Selector (Horizontal scrolling chips) */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Select Payment Provider</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.chipRow}
-              >
-                {PAYMENT_PROVIDERS.map((provider) => {
-                  const isSelected = selectedProvider === provider.id;
-                  const hasQR = !!qrCodes[provider.id];
-                  return (
-                    <TouchableOpacity
-                      key={provider.id}
-                      activeOpacity={0.7}
-                      style={[
-                        styles.chip,
-                        isSelected && {
-                          backgroundColor: provider.color,
-                          borderColor: provider.color,
-                          shadowColor: provider.color,
-                          shadowOpacity: 0.35,
-                          shadowRadius: 6,
-                          elevation: 3,
-                        },
-                      ]}
-                      onPress={async () => {
-                        await Haptics.selectionAsync();
-                        setSelectedProvider(provider.id);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          isSelected && styles.chipTextActive,
-                        ]}
-                      >
-                        {provider.label} {hasQR ? '✓' : ''}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
-
-            {/* Account Number Input Field */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>
-                {selectedProvider} Account / Phone Number
-              </Text>
-              <TextInput
-                style={styles.input}
-                placeholder={`Enter your ${selectedProvider} details`}
-                placeholderTextColor="#64748B"
-                value={activeAccount}
-                onChangeText={handleAccountChange}
-                keyboardType={selectedProvider === 'Bank Transfer' ? 'default' : 'phone-pad'}
-                returnKeyType="done"
-              />
-            </View>
-
-            {/* Bank / Payment QR Code Section (Supports Any Bank or Wallet) */}
-            <View style={styles.qrSectionCard}>
-              <View style={styles.qrSectionHeader}>
-                <View style={styles.qrHeaderTitleRow}>
-                  <Text style={styles.qrHeaderIcon}>💳</Text>
-                  <Text style={styles.qrHeaderTitle}>Bank / Payment QR Code</Text>
-                </View>
-                <View style={styles.anyBankBadge}>
-                  <Text style={styles.anyBankBadgeText}>Any Bank Accepted</Text>
-                </View>
-              </View>
-
-              <Text style={styles.qrSectionSubtitle}>
-                Upload screenshot from any bank or mobile wallet app (KBZPay, WavePay, AYA, CB Bank, PromptPay, etc.).
-              </Text>
-
-              {activeQrUri ? (
-                <View style={styles.activeQrCard}>
-                  <View style={styles.activeQrLeft}>
-                    <Image
-                      source={{ uri: activeQrUri }}
-                      style={styles.activeQrThumb}
-                      resizeMode="cover"
-                    />
-                    <View style={styles.activeQrInfo}>
-                      <Text style={styles.activeQrStatusText}>✓ Bank QR Attached</Text>
-                      <Text style={styles.activeQrSubText}>Ready for receipts & sharing</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.activeQrActions}>
-                    <TouchableOpacity
-                      style={styles.changeQrButton}
-                      onPress={handlePickQrImage}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.changeQrButtonText}>Change QR</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.removeQrButton}
-                      onPress={handleRemoveQrImage}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.removeQrButtonText}>Remove</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ) : (
+              <Text style={styles.drawerSection}>Share Message Format</Text>
+              <View style={styles.formatToggle}>
                 <TouchableOpacity
-                  style={styles.uploadAnyBankButton}
-                  onPress={handlePickQrImage}
-                  activeOpacity={0.7}
+                  style={[styles.formatBtn, copyFormatStyle === 'friendly' && styles.formatBtnOn]}
+                  onPress={async () => {
+                    await triggerHaptics();
+                    setCopyFormatStyle('friendly');
+                  }}
                 >
-                  <Text style={styles.uploadAnyBankIcon}>📷</Text>
-                  <Text style={styles.uploadAnyBankTitle}>Upload Any Bank QR Code</Text>
-                  <Text style={styles.uploadAnyBankSub}>
-                    Tap to select screenshot from photo gallery
+                  <Text
+                    style={[
+                      styles.formatBtnText,
+                      copyFormatStyle === 'friendly' && styles.formatBtnTextOn,
+                    ]}
+                  >
+                    ✨ Emoji Style
                   </Text>
                 </TouchableOpacity>
-              )}
-            </View>
-          </View>
-
-          {/* 5. ACTION BUTTONS & HAPTICS */}
-          <View style={styles.actionSection}>
-            {/* Primary: Share Bill & QR */}
-            <TouchableOpacity
-              style={[
-                styles.primaryButton,
-                !calculation.isValid && styles.buttonDisabled,
-              ]}
-              onPress={handleShareBillAndQR}
-              disabled={!calculation.isValid || isSharing}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.primaryButtonText}>
-                {isSharing
-                  ? 'Sharing...'
-                  : activeQrUri
-                  ? '📤 Share Bill & QR Code'
-                  : '📤 Share Bill Summary'}
-              </Text>
-            </TouchableOpacity>
-
-            {/* Secondary: Copy Text Only */}
-            <TouchableOpacity
-              style={[
-                styles.secondaryButton,
-                !calculation.isValid && styles.buttonDisabled,
-                isCopied && styles.secondaryButtonSuccess,
-              ]}
-              onPress={handleCopyTextOnly}
-              disabled={!calculation.isValid}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[
-                  styles.secondaryButtonText,
-                  isCopied && styles.secondaryButtonTextSuccess,
-                ]}
-              >
-                {isCopied ? '✓ Clean Text Copied!' : '📋 Copy Text Only (Ready to Share)'}
-              </Text>
-            </TouchableOpacity>
-
-            {/* Save to History Button / Feedback */}
-            <TouchableOpacity
-              style={[
-                styles.saveHistoryButton,
-                !calculation.isValid && styles.buttonDisabled,
-                isSavedFeedback && styles.saveHistoryButtonSuccess,
-              ]}
-              onPress={() => saveCalculationToHistory(calculation)}
-              disabled={!calculation.isValid}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[
-                  styles.saveHistoryButtonText,
-                  isSavedFeedback && styles.saveHistoryButtonTextSuccess,
-                ]}
-              >
-                {isSavedFeedback ? '✓ Saved to History!' : '💾 Save to History'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* 6. HISTORY SECTION (Last 5 Calculations in AsyncStorage) */}
-          <View style={styles.historySection}>
-            <View style={styles.historyHeader}>
-              <View style={styles.historyTitleRow}>
-                <Text style={styles.historyIcon}>🕒</Text>
-                <Text style={styles.historyTitle}>Recent Splits</Text>
-                <View style={styles.historyCountBadge}>
-                  <Text style={styles.historyCountText}>{history.length}/5</Text>
-                </View>
-              </View>
-              {history.length > 0 && (
                 <TouchableOpacity
-                  onPress={handleClearHistory}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  style={[styles.formatBtn, copyFormatStyle === 'clean' && styles.formatBtnOn]}
+                  onPress={async () => {
+                    await triggerHaptics();
+                    setCopyFormatStyle('clean');
+                  }}
                 >
-                  <Text style={styles.clearHistoryText}>Clear</Text>
+                  <Text
+                    style={[
+                      styles.formatBtnText,
+                      copyFormatStyle === 'clean' && styles.formatBtnTextOn,
+                    ]}
+                  >
+                    📝 Plain Text
+                  </Text>
                 </TouchableOpacity>
-              )}
-            </View>
+              </View>
 
-            {history.length === 0 ? (
-              <View style={styles.historyEmptyCard}>
-                <Text style={styles.historyEmptyText}>
-                  No recent splits yet. Your last 5 calculations will be saved to AsyncStorage automatically.
+              <View style={styles.includeRow}>
+                <Text style={styles.presetName}>Include split line</Text>
+                <TouchableOpacity
+                  style={[styles.toggleTrack, includePerPersonInCopy && styles.toggleTrackOn]}
+                  onPress={async () => {
+                    await triggerHaptics();
+                    setIncludePerPersonInCopy((prev) => !prev);
+                  }}
+                >
+                  <View
+                    style={[styles.toggleThumb, includePerPersonInCopy && styles.toggleThumbOn]}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.messagePreview}>
+                <Text style={styles.messagePreviewText}>{calculation.formattedMessage}</Text>
+              </View>
+
+              <TouchableOpacity style={styles.resetAllBtn} onPress={handleResetAllData}>
+                <Text style={styles.dangerText}>Reset All Stored Data</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={isReceiptModalOpen}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setIsReceiptModalOpen(false)}
+      >
+        <View style={styles.receiptModalRoot}>
+          <View style={styles.receiptModalCard}>
+            <View style={styles.receiptModalHeader}>
+              <View>
+                <Text style={styles.sectionTitle}>Receipt Card & QR</Text>
+                <Text style={styles.mutedTiny}>
+                  {activeQrUri
+                    ? `High-res image with ${selectedProvider} QR`
+                    : 'High-res receipt image'}
                 </Text>
               </View>
-            ) : (
-              <View style={styles.historyList}>
-                {history.map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={styles.historyCard}
-                    activeOpacity={0.75}
-                    onPress={() => handleRetrieveHistory(item)}
-                  >
-                    <View style={styles.historyCardTop}>
-                      <View style={styles.historyNameRow}>
-                        <Text style={styles.historyEventName} numberOfLines={1}>
-                          {item.eventName}
-                        </Text>
-                        <Text style={styles.historyTime}>{item.dateStr}</Text>
-                      </View>
-                      <View style={styles.historyCardActions}>
-                        <View style={styles.historyActionBadge}>
-                          <Text style={styles.historyActionBadgeText}>Load ↗</Text>
-                        </View>
-                        <TouchableOpacity
-                          style={styles.historyDeleteButton}
-                          activeOpacity={0.7}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          onPress={(e) => handleDeleteHistoryItem(item.id, e)}
-                        >
-                          <Text style={styles.historyDeleteButtonText}>✕</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-
-                    <View style={styles.historyCardBottom}>
-                      <View>
-                        <Text style={styles.historyShareLabel}>Per Person</Text>
-                        <Text style={styles.historyShareAmount}>{item.formattedShare}</Text>
-                      </View>
-                      <View style={styles.historyMeta}>
-                        <Text style={styles.historyMetaText}>
-                          Total: {item.formattedTotal}
-                        </Text>
-                        <Text style={styles.historyMetaSub}>
-                          👥 {item.numberOfPeople} people • {item.provider}
-                        </Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                ))}
+              <TouchableOpacity onPress={() => setIsReceiptModalOpen(false)}>
+                <Text style={styles.clearX}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={styles.receiptModalBody}>
+              <View style={styles.card}>
+                <Text style={styles.heroLabel}>PER PERSON · {calculation.peopleNum} PEOPLE</Text>
+                <Text style={styles.heroAmount}>{calculation.formattedShare}</Text>
+                <Text style={styles.heroSub}>
+                  of {calculation.formattedTotal} total
+                  {eventName.trim() ? ` · ${eventName.trim()}` : ''}
+                </Text>
+                {activeQrUri ? (
+                  <View style={[styles.qrLargeFrame, { marginTop: 16 }]}>
+                    <Image
+                      source={{ uri: activeQrUri }}
+                      style={styles.qrLargeImage}
+                      resizeMode="contain"
+                    />
+                  </View>
+                ) : null}
+                {activeAccount ? (
+                  <Text style={[styles.accountMono, { marginTop: 12, textAlign: 'center' }]}>
+                    {selectedProvider}: {activeAccount}
+                  </Text>
+                ) : null}
               </View>
-            )}
+              <Text style={[styles.mutedTiny, { textAlign: 'center', marginTop: 10 }]}>
+                Tip: In Viber, Telegram, or WhatsApp, share the QR photo from Save PNG.
+              </Text>
+            </ScrollView>
+            <View style={styles.receiptModalActions}>
+              <View style={styles.twoCol}>
+                <TouchableOpacity style={styles.accentPill} onPress={handleCopyReceiptCard}>
+                  <Text style={styles.accentPillText}>
+                    {isCardCopied ? 'Image Copied!' : 'Copy Image'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.secondaryPill} onPress={handleDownloadReceipt}>
+                  <Text style={styles.secondaryPillText}>Save PNG</Text>
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity style={styles.secondaryPill} onPress={handleShareBillAndQR}>
+                <Text style={styles.secondaryPillText}>Share Image via Apps...</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
-// Deep charcoal / Revolut-inspired dark stylesheet
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-  keyboardContainer: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 40,
-  },
+  safeArea: { flex: 1, backgroundColor: '#000000' },
+  keyboardContainer: { flex: 1 },
   header: {
-    marginBottom: 16,
-  },
-  appTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
-  },
-  appSubtitle: {
-    fontSize: 13,
-    color: '#8E8E93',
-    marginTop: 4,
-    lineHeight: 18,
-  },
-  receiptContainer: {
-    backgroundColor: '#1C1C1E',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 20,
-  },
-  receiptTopBar: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
   },
-  receiptBadge: {
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  appTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.4,
+  },
+  proBadge: {
+    backgroundColor: 'rgba(45,212,191,0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  proBadgeText: { color: '#2DD4BF', fontSize: 9, fontWeight: '800' },
+  appSubtitle: { fontSize: 11, color: '#8E8E93', marginTop: 3, fontWeight: '500' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  toolsBtn: {
+    backgroundColor: '#1C1C1E',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  toolsBtnText: { color: '#E5E5EA', fontSize: 11, fontWeight: '700' },
+  resetBtn: { padding: 6 },
+  resetGlyph: { color: 'rgba(255,255,255,0.4)', fontSize: 16 },
+  scrollContent: { paddingHorizontal: 16, paddingBottom: 28 },
+  tabStack: { gap: 14 },
+  eventRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  receiptBadgeDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    marginRight: 6,
-  },
-  receiptBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#E2E8F0',
-    letterSpacing: 0.8,
-  },
-  receiptLiveTag: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#2DD4BF',
-    letterSpacing: 0.5,
-  },
-  receiptBody: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.12)',
+    paddingVertical: 8,
     gap: 8,
   },
-  receiptHero: {
-    alignItems: 'center',
-    paddingVertical: 10,
+  eventEmoji: { fontSize: 12 },
+  eventInput: { flex: 1, color: '#FFFFFF', fontSize: 14, fontWeight: '600', paddingVertical: 4 },
+  clearX: { color: '#636366', fontSize: 14, paddingHorizontal: 4 },
+  card: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 20,
+    padding: 16,
   },
-  receiptHeroLabel: {
+  heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  heroBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  mutedSmall: { color: '#8E8E93', fontSize: 11, fontWeight: '600' },
+  mutedTiny: { color: '#8E8E93', fontSize: 10, marginTop: 2 },
+  previewChip: {
+    backgroundColor: 'rgba(45,212,191,0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  previewChipText: { color: '#2DD4BF', fontSize: 11, fontWeight: '700' },
+  disabled: { opacity: 0.4 },
+  heroCenter: { alignItems: 'center', paddingVertical: 10 },
+  heroLabel: {
     fontSize: 11,
     fontWeight: '600',
     color: '#8E8E93',
     letterSpacing: 1.4,
-    marginBottom: 8,
+    marginBottom: 6,
   },
-  receiptHeroAmount: {
+  heroAmount: {
     fontSize: 38,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -1,
   },
-  receiptHeroSub: {
-    fontSize: 12,
-    color: '#8E8E93',
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  receiptRow: {
+  heroSub: { fontSize: 12, color: '#8E8E93', marginTop: 8, textAlign: 'center' },
+  equalBadge: { marginTop: 10, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  equalBadgeText: { fontSize: 10, fontWeight: '800' },
+  accountStrip: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+    paddingTop: 12,
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  receiptHighlightRow: {
+  accountStripRight: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
+  accountMono: {
+    color: 'rgba(255,255,255,0.9)',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 12,
+    fontWeight: '700',
+    maxWidth: 160,
+  },
+  copyGlyph: { color: '#8E8E93', fontSize: 14 },
+  qrStrip: {
+    marginTop: 12,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 16,
+    padding: 12,
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+  qrStripImageWrap: {
+    width: 64,
+    height: 64,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 6,
+  },
+  qrStripImage: { width: '100%', height: '100%' },
+  qrStripInfo: { flex: 1 },
+  qrStripTitle: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
+  qrStripActions: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
+  miniPill: {
     backgroundColor: '#2C2C2E',
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    marginVertical: 2,
+    paddingVertical: 5,
+    borderRadius: 999,
   },
-  receiptIcon: {
-    fontSize: 15,
-    marginRight: 8,
-  },
-  receiptEventText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-    flex: 1,
-  },
-  receiptLabel: {
-    color: '#8E8E93',
-    fontSize: 13,
-    fontWeight: '500',
-    marginRight: 6,
-  },
-  receiptLabelHighlight: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-    marginRight: 6,
-  },
-  receiptValueMono: {
-    color: '#E2E8F0',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  receiptValueMonoHighlight: {
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  receiptAccountText: {
-    color: '#CBD5E1',
-    fontSize: 13,
-    fontWeight: '600',
-    flex: 1,
-  },
-  dashedDivider: {
-    borderBottomWidth: 1.5,
-    borderColor: '#2C2C2E',
-    borderStyle: 'dashed',
-    marginVertical: 14,
-  },
-  receiptFooter: {
+  miniPillSuccess: { backgroundColor: '#059669' },
+  miniPillText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
+  miniPillTextSuccess: { color: '#FFFFFF' },
+  miniIconBtn: {
+    backgroundColor: '#2C2C2E',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  qrPreviewWrapper: {
-    alignItems: 'center',
-  },
-  qrImageContainer: {
-    width: 168,
-    height: 168,
-    borderRadius: 24,
-    overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
-    padding: 10,
-  },
-  qrImage: {
-    width: '100%',
-    height: '100%',
-  },
-  qrCaption: {
-    fontSize: 12,
-    color: '#E2E8F0',
-    marginTop: 8,
-    fontWeight: '600',
-  },
-  qrSubCaption: {
+  billPeopleRow: { flexDirection: 'row', gap: 12 },
+  billCol: { flex: 7 },
+  peopleCol: { flex: 5 },
+  labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  fieldLabel: { color: '#8E8E93', fontSize: 11, fontWeight: '700', marginBottom: 6 },
+  monoDim: {
+    color: '#636366',
     fontSize: 10,
-    color: '#8E8E93',
-    marginTop: 2,
-    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
-  qrPlaceholder: {
-    alignItems: 'center',
+  billInputWrap: { position: 'relative', justifyContent: 'center' },
+  billInput: {
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderRadius: 16,
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    paddingHorizontal: 8,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
-  qrPlaceholderIcon: {
-    fontSize: 22,
-    marginBottom: 4,
-  },
-  qrPlaceholderText: {
-    fontSize: 13,
-    color: '#E2E8F0',
-    fontWeight: '600',
-  },
-  qrPlaceholderAction: {
-    fontSize: 11,
-    fontWeight: '500',
-    marginTop: 4,
-    textAlign: 'center',
+  currencyAffix: {
+    position: 'absolute',
+    left: 12,
+    zIndex: 1,
     color: '#2DD4BF',
+    fontWeight: '800',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
-  formSection: {
-    marginBottom: 16,
+  currencySuffix: {
+    position: 'absolute',
+    right: 10,
+    color: '#2DD4BF',
+    backgroundColor: '#2C2C2E',
+    overflow: 'hidden',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    fontSize: 11,
+    fontWeight: '800',
   },
-  inputGroup: {
-    marginBottom: 14,
+  chipRowWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  incChip: {
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
   },
-  row: {
-    flexDirection: 'row',
-    gap: 12,
+  incChipText: {
+    color: '#8E8E93',
+    fontSize: 10,
+    fontWeight: '800',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
-  flexOne: {
+  peopleStepper: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  stepBtn: {
+    width: 36,
+    height: 40,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
+  peopleInput: {
     flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderRadius: 16,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    fontWeight: '700',
+    paddingVertical: 8,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
-  flexTwo: {
-    flex: 1.8,
+  peopleChip: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    paddingVertical: 4,
+    borderRadius: 999,
+    alignItems: 'center',
   },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#CBD5E1',
-    marginBottom: 8,
-  },
-  labelRow: {
+  peopleChipOn: { backgroundColor: '#FFFFFF' },
+  peopleChipText: { color: '#8E8E93', fontSize: 10, fontWeight: '800' },
+  peopleChipTextOn: { color: '#000000' },
+  payingRow: {
+    marginTop: 12,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 16,
+    padding: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
   },
-  activeCurrencyTag: {
-    color: '#2DD4BF',
-    fontSize: 12,
-    fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-  },
-  optionalTag: {
-    fontSize: 11,
-    fontWeight: '400',
-    color: '#636366',
-  },
-  input: {
-    backgroundColor: '#1C1C1E',
-    borderWidth: 0,
+  payingLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  walletDot: {
+    width: 32,
+    height: 32,
     borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  monoInput: {
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    fontWeight: '600',
-  },
-  centerText: {
-    textAlign: 'center',
-  },
-  chipRow: {
-    flexDirection: 'row',
-    paddingVertical: 4,
-    gap: 8,
-  },
-  chip: {
-    backgroundColor: '#1C1C1E',
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 20,
-  },
-  currencyChipActive: {
+  walletGlyph: { color: '#FFFFFF', fontWeight: '800' },
+  payingLabel: { color: '#8E8E93', fontSize: 10 },
+  payingValue: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
+  changeLink: { color: '#2DD4BF', fontSize: 11, fontWeight: '700' },
+  primaryPill: {
     backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+    paddingVertical: 14,
+    alignItems: 'center',
   },
-  chipText: {
-    color: '#8E8E93',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  chipTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  currencyChipTextActive: {
-    color: '#000000',
-    fontWeight: '700',
-  },
-  qrSectionCard: {
+  primaryPillDisabled: { backgroundColor: '#1C1C1E', opacity: 0.6 },
+  primaryPillText: { color: '#000000', fontSize: 14, fontWeight: '800' },
+  receiptAction: {
     backgroundColor: '#1C1C1E',
     borderRadius: 16,
     padding: 12,
-    marginTop: 4,
-  },
-  qrSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  receiptActionSuccess: {
+    backgroundColor: 'rgba(6,78,59,0.7)',
+  },
+  receiptActionTitle: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
+  receiptActionSub: { color: '#8E8E93', fontSize: 10, marginTop: 2 },
+  successText: { color: '#6EE7B7' },
+  eyeBtn: { padding: 6 },
+  twoCol: { flexDirection: 'row', gap: 8 },
+  secondaryPill: {
+    flex: 1,
+    backgroundColor: '#1C1C1E',
+    borderRadius: 999,
+    paddingVertical: 11,
+    alignItems: 'center',
+  },
+  secondaryPillText: { color: '#CBD5E1', fontSize: 12, fontWeight: '700' },
+  bookmarkBtn: { alignItems: 'center', paddingVertical: 8 },
+  bookmarkText: { color: '#8E8E93', fontSize: 11, fontWeight: '700' },
+  accentText: { color: '#2DD4BF', fontSize: 11, fontWeight: '800' },
+  toolsHint: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 4,
   },
-  qrHeaderTitleRow: {
+  sectionTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+  pageTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '800' },
+  providerRow: {
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderRadius: 16,
+    padding: 12,
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 6,
   },
-  qrHeaderIcon: {
-    fontSize: 14,
-  },
-  qrHeaderTitle: {
-    color: '#F1F5F9',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  anyBankBadge: {
-    backgroundColor: 'rgba(45, 212, 191, 0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  anyBankBadgeText: {
-    color: '#2DD4BF',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  qrSectionSubtitle: {
-    color: '#8E8E93',
-    fontSize: 11,
-    lineHeight: 16,
-    marginBottom: 10,
-  },
-  uploadAnyBankButton: {
-    backgroundColor: '#000000',
-    borderWidth: 1.2,
-    borderStyle: 'dashed',
-    borderColor: 'rgba(255,255,255,0.16)',
-    borderRadius: 20,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  uploadAnyBankIcon: {
-    fontSize: 20,
-    marginBottom: 4,
-  },
-  uploadAnyBankTitle: {
+  providerRowOn: { backgroundColor: '#FFFFFF' },
+  providerName: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
+  providerNameOn: { color: '#000000' },
+  qrReadyDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#34D399', marginRight: 6 },
+  checkMark: { color: '#000000', fontWeight: '800' },
+  accentTiny: { color: '#2DD4BF', fontSize: 10, fontWeight: '600' },
+  accountInputWrap: { position: 'relative', justifyContent: 'center' },
+  accountInput: {
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderRadius: 16,
     color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  uploadAnyBankSub: {
-    color: '#636366',
-    fontSize: 11,
-  },
-  activeQrCard: {
-    backgroundColor: '#000000',
-    borderRadius: 12,
-    padding: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  activeQrLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flex: 1,
-  },
-  activeQrThumb: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-  },
-  activeQrInfo: {
-    flex: 1,
-  },
-  activeQrStatusText: {
-    color: '#2DD4BF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  activeQrSubText: {
-    color: '#8E8E93',
-    fontSize: 10,
-    marginTop: 2,
-  },
-  activeQrActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  changeQrButton: {
-    backgroundColor: '#2C2C2E',
-    borderRadius: 20,
-    paddingVertical: 7,
-    paddingHorizontal: 10,
-  },
-  changeQrButtonText: {
-    color: '#E2E8F0',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  removeQrButton: {
-    backgroundColor: 'rgba(255,69,58,0.12)',
-    borderRadius: 20,
-    paddingVertical: 7,
-    paddingHorizontal: 10,
-  },
-  removeQrButtonText: {
-    color: '#FF453A',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  actionSection: {
-    gap: 10,
-    marginTop: 6,
-  },
-  primaryButton: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 999,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryButton: {
-    backgroundColor: '#1C1C1E',
-    borderRadius: 999,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonDisabled: {
-    backgroundColor: '#1C1C1E',
-    opacity: 0.5,
-  },
-  secondaryButtonSuccess: {
-    backgroundColor: '#064E3B',
-  },
-  primaryButtonText: {
-    color: '#000000',
-    fontSize: 15,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-  },
-  secondaryButtonText: {
-    color: '#E2E8F0',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  secondaryButtonTextSuccess: {
-    color: '#34D399',
-    fontWeight: '700',
-  },
-  saveHistoryButton: {
-    backgroundColor: 'transparent',
-    borderRadius: 999,
+    paddingHorizontal: 14,
     paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveHistoryButtonSuccess: {
-    backgroundColor: 'rgba(45, 212, 191, 0.12)',
-  },
-  saveHistoryButtonText: {
-    color: '#8E8E93',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  saveHistoryButtonTextSuccess: {
-    color: '#2DD4BF',
-    fontWeight: '700',
-  },
-  historySection: {
-    marginTop: 20,
-    marginBottom: 30,
-  },
-  historyHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  historyTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  historyIcon: {
-    fontSize: 15,
-  },
-  historyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: -0.3,
-  },
-  historyCountBadge: {
-    backgroundColor: '#1C1C1E',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  historyCountText: {
-    color: '#8E8E93',
-    fontSize: 11,
-    fontWeight: '600',
+    paddingRight: 64,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
-  clearHistoryText: {
-    color: '#FF453A',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  historyEmptyCard: {
-    paddingVertical: 18,
+  inlineCopy: {
+    position: 'absolute',
+    right: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
     paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  inlineCopyText: { color: '#000000', fontSize: 10, fontWeight: '800' },
+  qrLargeWrap: { alignItems: 'center', gap: 8, paddingTop: 8 },
+  qrLargeFrame: {
+    width: 168,
+    height: 168,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 12,
+  },
+  qrLargeImage: { width: '100%', height: '100%' },
+  qrEditRow: { flexDirection: 'row', gap: 16, marginTop: 4 },
+  dangerText: { color: '#FF7B72', fontSize: 11, fontWeight: '700' },
+  uploadDashed: {
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 24,
+    padding: 24,
     alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    marginTop: 8,
   },
-  historyEmptyText: {
-    color: '#636366',
-    fontSize: 12,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  historyList: {
-    backgroundColor: '#1C1C1E',
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  historyCard: {
-    backgroundColor: '#1C1C1E',
-    padding: 14,
+  uploadIcon: { color: '#2DD4BF', fontSize: 22, marginBottom: 6 },
+  sampleQrBtn: { alignItems: 'center', paddingVertical: 8 },
+  emptyHistory: { alignItems: 'center', paddingVertical: 40, gap: 8 },
+  emptyClock: { fontSize: 28, marginBottom: 4 },
+  emptyCopy: { color: '#8E8E93', fontSize: 12, textAlign: 'center', maxWidth: 240, lineHeight: 18 },
+  historyRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.06)',
+    gap: 12,
   },
-  historyCardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  historyNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flex: 1,
-  },
-  historyEventName: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-    maxWidth: '70%',
-  },
-  historyTime: {
+  historyMeta: {
     color: '#636366',
-    fontSize: 11,
+    fontSize: 10,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
-  historyCardActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  historyActionBadge: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
+  historyName: { color: '#FFFFFF', fontSize: 14, fontWeight: '800', marginTop: 2 },
+  historyRight: { alignItems: 'flex-end' },
+  historyShare: { color: '#2DD4BF', fontSize: 14, fontWeight: '800' },
+  historyActions: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  loadChip: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,
   },
-  historyActionBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  historyDeleteButton: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255, 69, 58, 0.12)',
-  },
-  historyDeleteButtonText: {
-    color: '#FF453A',
+  loadChipText: { color: 'rgba(255,255,255,0.7)', fontSize: 10, fontWeight: '700' },
+  loadChipTextAccent: {
+    color: '#2DD4BF',
     fontSize: 10,
     fontWeight: '700',
+    backgroundColor: 'rgba(45,212,191,0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    overflow: 'hidden',
   },
-  historyCardBottom: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    paddingTop: 8,
+  toast: {
+    position: 'absolute',
+    top: 58,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(28,28,30,0.95)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    zIndex: 40,
+  },
+  toastText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
+  bottomNav: {
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: '#000000',
+    flexDirection: 'row',
+    paddingTop: 6,
+    paddingBottom: 8,
   },
-  historyShareLabel: {
+  navItem: { flex: 1, alignItems: 'center', paddingVertical: 6, position: 'relative' },
+  navActiveLine: {
+    position: 'absolute',
+    top: -6,
+    width: 32,
+    height: 2,
+    borderRadius: 999,
+    backgroundColor: '#2DD4BF',
+  },
+  navIcon: { fontSize: 16, color: '#636366' },
+  navIconActive: { color: '#2DD4BF' },
+  navLabel: { fontSize: 10, color: '#636366', fontWeight: '600', marginTop: 2 },
+  navLabelActive: { color: '#2DD4BF', fontWeight: '800' },
+  navBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -10,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#2DD4BF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  navBadgeText: { color: '#000000', fontSize: 9, fontWeight: '800' },
+  drawerRoot: { flex: 1, flexDirection: 'row' },
+  drawerScrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)' },
+  drawerPanel: {
+    width: '85%',
+    backgroundColor: '#0f131a',
+    borderLeftWidth: 1,
+    borderLeftColor: 'rgba(255,255,255,0.06)',
+    padding: 16,
+  },
+  drawerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+    marginBottom: 12,
+  },
+  drawerSection: {
     color: '#8E8E93',
-    fontSize: 10,
-    textTransform: 'uppercase',
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-  historyShareAmount: {
-    color: '#2DD4BF',
-    fontSize: 15,
-    fontWeight: '700',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    marginTop: 2,
-  },
-  historyMeta: {
-    alignItems: 'flex-end',
-  },
-  historyMetaText: {
-    color: '#CBD5E1',
     fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  presetRow: {
+    backgroundColor: '#121212',
+    borderRadius: 12,
+    padding: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  presetName: { color: '#E2E8F0', fontSize: 12, fontWeight: '800' },
+  currencyGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  currencyCell: {
+    width: '30%',
+    flexGrow: 1,
+    backgroundColor: '#121212',
+    borderRadius: 12,
+    padding: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  currencyCellOn: { backgroundColor: '#2DD4BF', borderColor: '#2DD4BF' },
+  currencySym: { color: '#CBD5E1', fontWeight: '800' },
+  currencyCode: { color: '#8E8E93', fontSize: 10 },
+  currencyOnText: { color: '#04140f' },
+  formatToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#121212',
+    borderRadius: 12,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    gap: 4,
+  },
+  formatBtn: { flex: 1, paddingVertical: 6, borderRadius: 8, alignItems: 'center' },
+  formatBtnOn: { backgroundColor: '#2DD4BF' },
+  formatBtnText: { color: '#8E8E93', fontSize: 11, fontWeight: '800' },
+  formatBtnTextOn: { color: '#04140f' },
+  includeRow: {
+    marginTop: 10,
+    backgroundColor: '#121212',
+    borderRadius: 12,
+    padding: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  toggleTrack: {
+    width: 32,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#334155',
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+  },
+  toggleTrackOn: { backgroundColor: '#2DD4BF', alignItems: 'flex-end' },
+  toggleThumb: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#FFFFFF' },
+  toggleThumbOn: { alignSelf: 'flex-end' },
+  messagePreview: {
+    backgroundColor: '#080a0e',
+    borderRadius: 12,
+    padding: 10,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  messagePreviewText: {
+    color: '#CBD5E1',
+    fontSize: 10,
+    lineHeight: 16,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
-  historyMetaSub: {
-    color: '#636366',
-    fontSize: 10,
-    marginTop: 2,
+  resetAllBtn: {
+    marginTop: 16,
+    marginBottom: 24,
+    backgroundColor: 'rgba(239,68,68,0.1)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.2)',
   },
+  receiptModalRoot: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  receiptModalCard: {
+    backgroundColor: '#121212',
+    borderRadius: 20,
+    maxHeight: '92%',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  receiptModalHeader: {
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: '#1C1C1E',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  receiptModalBody: { padding: 14, alignItems: 'center' },
+  receiptModalActions: { padding: 12, gap: 8, backgroundColor: '#1C1C1E' },
+  accentPill: {
+    flex: 1,
+    backgroundColor: '#2DD4BF',
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  accentPillText: { color: '#04140f', fontSize: 12, fontWeight: '800' },
 });
-
