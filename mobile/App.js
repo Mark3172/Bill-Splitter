@@ -123,11 +123,16 @@ function NavTabIcon({ name, active }) {
   }
   if (name === 'payment') {
     return (
-      <View style={navIconStyles.box}>
-        <View style={[navIconStyles.qrCorner, { top: 2, left: 2, borderColor: color }]} />
-        <View style={[navIconStyles.qrCorner, { top: 2, right: 2, borderColor: color }]} />
-        <View style={[navIconStyles.qrCorner, { bottom: 2, left: 2, borderColor: color }]} />
-        <View style={[navIconStyles.qrDot, { backgroundColor: color }]} />
+      <View style={navIconStyles.qrBox}>
+        <View style={[navIconStyles.qrFinder, { top: 0, left: 0, borderColor: color }]} />
+        <View style={[navIconStyles.qrFinder, { top: 0, right: 0, borderColor: color }]} />
+        <View style={[navIconStyles.qrFinder, { bottom: 0, left: 0, borderColor: color }]} />
+        <View style={[navIconStyles.qrFinderInner, { top: 2.5, left: 2.5, backgroundColor: color }]} />
+        <View style={[navIconStyles.qrFinderInner, { top: 2.5, right: 2.5, backgroundColor: color }]} />
+        <View style={[navIconStyles.qrFinderInner, { bottom: 2.5, left: 2.5, backgroundColor: color }]} />
+        <View style={[navIconStyles.qrCell, { right: 1, bottom: 1, backgroundColor: color }]} />
+        <View style={[navIconStyles.qrCell, { right: 6, bottom: 6, backgroundColor: color }]} />
+        <View style={[navIconStyles.qrCell, { right: 1, bottom: 6, backgroundColor: color }]} />
       </View>
     );
   }
@@ -154,14 +159,26 @@ const navIconStyles = StyleSheet.create({
   },
   receiptLine: { height: 1.5, borderRadius: 1 },
   receiptLineShort: { height: 1.5, borderRadius: 1, width: '65%' },
-  qrCorner: {
+  qrBox: { width: 20, height: 20, position: 'relative' },
+  qrFinder: {
     position: 'absolute',
-    width: 7,
-    height: 7,
-    borderWidth: 1.6,
-    borderRadius: 1,
+    width: 8,
+    height: 8,
+    borderWidth: 1.7,
+    borderRadius: 1.5,
   },
-  qrDot: { width: 4, height: 4, borderRadius: 1 },
+  qrFinderInner: {
+    position: 'absolute',
+    width: 3,
+    height: 3,
+    borderRadius: 0.5,
+  },
+  qrCell: {
+    position: 'absolute',
+    width: 3,
+    height: 3,
+    borderRadius: 0.5,
+  },
   clock: {
     width: 18,
     height: 18,
