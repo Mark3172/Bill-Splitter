@@ -106,6 +106,74 @@ const formatNumber = (val) => {
   return parts.join('.');
 };
 
+const ANDROID_TOP_INSET = Platform.OS === 'android' ? (StatusBar.currentHeight || 28) : 0;
+
+function NavTabIcon({ name, active }) {
+  const color = active ? '#2DD4BF' : '#8E8E93';
+  if (name === 'split') {
+    return (
+      <View style={navIconStyles.box}>
+        <View style={[navIconStyles.receipt, { borderColor: color }]}>
+          <View style={[navIconStyles.receiptLine, { backgroundColor: color }]} />
+          <View style={[navIconStyles.receiptLineShort, { backgroundColor: color }]} />
+          <View style={[navIconStyles.receiptLine, { backgroundColor: color }]} />
+        </View>
+      </View>
+    );
+  }
+  if (name === 'payment') {
+    return (
+      <View style={navIconStyles.box}>
+        <View style={[navIconStyles.qrCorner, { top: 2, left: 2, borderColor: color }]} />
+        <View style={[navIconStyles.qrCorner, { top: 2, right: 2, borderColor: color }]} />
+        <View style={[navIconStyles.qrCorner, { bottom: 2, left: 2, borderColor: color }]} />
+        <View style={[navIconStyles.qrDot, { backgroundColor: color }]} />
+      </View>
+    );
+  }
+  return (
+    <View style={navIconStyles.box}>
+      <View style={[navIconStyles.clock, { borderColor: color }]}>
+        <View style={[navIconStyles.clockHour, { backgroundColor: color }]} />
+        <View style={[navIconStyles.clockMinute, { backgroundColor: color }]} />
+      </View>
+    </View>
+  );
+}
+
+const navIconStyles = StyleSheet.create({
+  box: { width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
+  receipt: {
+    width: 15,
+    height: 18,
+    borderWidth: 1.6,
+    borderRadius: 3,
+    paddingHorizontal: 2.5,
+    paddingVertical: 3,
+    justifyContent: 'space-between',
+  },
+  receiptLine: { height: 1.5, borderRadius: 1 },
+  receiptLineShort: { height: 1.5, borderRadius: 1, width: '65%' },
+  qrCorner: {
+    position: 'absolute',
+    width: 7,
+    height: 7,
+    borderWidth: 1.6,
+    borderRadius: 1,
+  },
+  qrDot: { width: 4, height: 4, borderRadius: 1 },
+  clock: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clockHour: { position: 'absolute', width: 1.5, height: 5, top: 3, borderRadius: 1 },
+  clockMinute: { position: 'absolute', width: 5, height: 1.5, left: 9, top: 8, borderRadius: 1 },
+});
+
 export default function App() {
   const [eventName, setEventName] = useState('Hotpot Dinner');
   const [totalBill, setTotalBill] = useState('145000');
@@ -1099,19 +1167,22 @@ export default function App() {
 
       {history.length === 0 ? (
         <View style={styles.emptyHistory}>
-          <Text style={styles.emptyClock}>🕒</Text>
-          <Text style={styles.sectionTitle}>No saved splits yet</Text>
+          <View style={styles.emptyIconWrap}>
+            <NavTabIcon name="history" active={false} />
+          </View>
+          <Text style={styles.emptyTitle}>No saved splits yet</Text>
           <Text style={styles.emptyCopy}>
             Share or bookmark a bill and it shows up here for quick restore.
           </Text>
           <TouchableOpacity
-            style={styles.primaryPill}
+            style={styles.emptyCta}
             onPress={async () => {
               await triggerHaptics();
               setActiveNavTab('split');
             }}
+            activeOpacity={0.85}
           >
-            <Text style={styles.primaryPillText}>Create first split</Text>
+            <Text style={styles.emptyCtaText}>+  Create first split</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -1154,14 +1225,16 @@ export default function App() {
     </View>
   );
 
+  const RootView = Platform.OS === 'ios' ? SafeAreaView : View;
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+    <RootView style={styles.safeArea}>
+      <StatusBar barStyle="light-content" backgroundColor="#000000" translucent={false} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardContainer}
       >
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: ANDROID_TOP_INSET + 12 }]}>
           <View style={{ flex: 1, paddingRight: 8 }}>
             <View style={styles.titleRow}>
               <Text style={styles.appTitle}>Bill Splitter</Text>
@@ -1205,9 +1278,9 @@ export default function App() {
 
         <View style={styles.bottomNav}>
           {[
-            { id: 'split', label: 'Split', icon: '🧾' },
-            { id: 'payment', label: 'Pay & QR', icon: '▢' },
-            { id: 'history', label: 'History', icon: '🕒' },
+            { id: 'split', label: 'Split' },
+            { id: 'payment', label: 'Pay & QR' },
+            { id: 'history', label: 'History' },
           ].map((tab) => {
             const active = activeNavTab === tab.id;
             return (
@@ -1220,8 +1293,8 @@ export default function App() {
                 }}
               >
                 {active ? <View style={styles.navActiveLine} /> : null}
-                <View>
-                  <Text style={[styles.navIcon, active && styles.navIconActive]}>{tab.icon}</Text>
+                <View style={styles.navIconWrap}>
+                  <NavTabIcon name={tab.id} active={active} />
                   {tab.id === 'history' && history.length > 0 ? (
                     <View style={styles.navBadge}>
                       <Text style={styles.navBadgeText}>{history.length}</Text>
@@ -1420,7 +1493,7 @@ export default function App() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </RootView>
   );
 }
 
@@ -1430,14 +1503,15 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 12,
+    paddingBottom: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    backgroundColor: '#000000',
   },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   appTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -0.4,
@@ -1766,9 +1840,50 @@ const styles = StyleSheet.create({
   },
   uploadIcon: { color: '#2DD4BF', fontSize: 22, marginBottom: 6 },
   sampleQrBtn: { alignItems: 'center', paddingVertical: 8 },
-  emptyHistory: { alignItems: 'center', paddingVertical: 40, gap: 8 },
-  emptyClock: { fontSize: 28, marginBottom: 4 },
-  emptyCopy: { color: '#8E8E93', fontSize: 12, textAlign: 'center', maxWidth: 240, lineHeight: 18 },
+  emptyHistory: {
+    alignItems: 'stretch',
+    paddingVertical: 36,
+    paddingHorizontal: 4,
+    gap: 10,
+  },
+  emptyIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#1C1C1E',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+  },
+  emptyTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  emptyCopy: {
+    color: '#8E8E93',
+    fontSize: 13,
+    textAlign: 'center',
+    alignSelf: 'center',
+    maxWidth: 260,
+    lineHeight: 19,
+  },
+  emptyCta: {
+    marginTop: 10,
+    alignSelf: 'stretch',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    minHeight: 54,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyCtaText: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '800',
+  },
   historyRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1805,7 +1920,7 @@ const styles = StyleSheet.create({
   },
   toast: {
     position: 'absolute',
-    top: 58,
+    top: ANDROID_TOP_INSET + 56,
     alignSelf: 'center',
     backgroundColor: 'rgba(28,28,30,0.95)',
     paddingHorizontal: 14,
@@ -1819,26 +1934,25 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(255,255,255,0.06)',
     backgroundColor: '#000000',
     flexDirection: 'row',
-    paddingTop: 6,
-    paddingBottom: 8,
+    paddingTop: 8,
+    paddingBottom: Platform.OS === 'android' ? 18 : 10,
   },
   navItem: { flex: 1, alignItems: 'center', paddingVertical: 6, position: 'relative' },
   navActiveLine: {
     position: 'absolute',
-    top: -6,
+    top: -8,
     width: 32,
     height: 2,
     borderRadius: 999,
     backgroundColor: '#2DD4BF',
   },
-  navIcon: { fontSize: 16, color: '#636366' },
-  navIconActive: { color: '#2DD4BF' },
-  navLabel: { fontSize: 10, color: '#636366', fontWeight: '600', marginTop: 2 },
+  navIconWrap: { position: 'relative', width: 28, height: 22, alignItems: 'center', justifyContent: 'center' },
+  navLabel: { fontSize: 11, color: '#8E8E93', fontWeight: '600', marginTop: 4 },
   navLabelActive: { color: '#2DD4BF', fontWeight: '800' },
   navBadge: {
     position: 'absolute',
-    top: -4,
-    right: -10,
+    top: -6,
+    right: -8,
     minWidth: 16,
     height: 16,
     borderRadius: 8,

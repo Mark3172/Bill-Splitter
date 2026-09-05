@@ -2,7 +2,7 @@
   "expo": {
     "name": "Bill Splitter",
     "slug": "bill-splitter",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -14,9 +14,14 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.mark3172.billsplitter"
     },
+    "androidStatusBar": {
+      "barStyle": "light-content",
+      "backgroundColor": "#000000",
+      "translucent": false
+    },
     "android": {
       "package": "com.mark3172.billsplitter",
-      "versionCode": 1,
+      "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#000000",
         "foregroundImage": "./assets/android-icon-foreground.png",
